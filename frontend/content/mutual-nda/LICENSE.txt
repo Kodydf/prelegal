@@ -1,0 +1,14 @@
+The Mutual Non-Disclosure Agreement templates in this directory (Mutual-NDA.md and
+Mutual-NDA-coverpage.md) are sourced from Common Paper
+(https://github.com/CommonPaper/Mutual-NDA) and are licensed under the Creative
+Commons Attribution 4.0 International License (CC BY 4.0).
+
+License text: https://creativecommons.org/licenses/by/4.0/
+
+Attribution: Common Paper (https://commonpaper.com), Common Paper Mutual
+Non-Disclosure Agreement, Version 1.0.
+
+These files are kept here for reference and license provenance. The interactive
+form, preview, and PDF export in this app are built from a structured
+representation of this same content in lib/nda-document.ts, not by parsing
+these markdown files at runtime.
