@@ -31,6 +31,72 @@ function Field({
   );
 }
 
+interface YearsOrOtherChoiceProps {
+  legend: string;
+  hint: string;
+  name: string;
+  yearsOptionSelected: boolean;
+  onSelectYearsOption: () => void;
+  years: number;
+  onYearsChange: (years: number) => void;
+  yearsPrefix?: string;
+  yearsSuffix: string;
+  otherOptionSelected: boolean;
+  onSelectOtherOption: () => void;
+  otherLabel: string;
+}
+
+function YearsOrOtherChoice({
+  legend,
+  hint,
+  name,
+  yearsOptionSelected,
+  onSelectYearsOption,
+  years,
+  onYearsChange,
+  yearsPrefix,
+  yearsSuffix,
+  otherOptionSelected,
+  onSelectOtherOption,
+  otherLabel,
+}: YearsOrOtherChoiceProps) {
+  return (
+    <fieldset>
+      <legend className={labelClass}>{legend}</legend>
+      <p className={hintClass}>{hint}</p>
+      <div className="mt-2 flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm text-zinc-800">
+          <input
+            type="radio"
+            name={name}
+            checked={yearsOptionSelected}
+            onChange={onSelectYearsOption}
+          />
+          {yearsPrefix}
+          <input
+            className="w-16 rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            type="number"
+            min={0}
+            value={years}
+            onChange={(e) => onYearsChange(Math.max(0, Number(e.target.value) || 0))}
+            disabled={!yearsOptionSelected}
+          />
+          {yearsSuffix}
+        </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-800">
+          <input
+            type="radio"
+            name={name}
+            checked={otherOptionSelected}
+            onChange={onSelectOtherOption}
+          />
+          {otherLabel}
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
 function PartyFields({
   title,
   party,
@@ -123,72 +189,34 @@ export default function NdaForm({ data, onChange }: NdaFormProps) {
         />
       </Field>
 
-      <fieldset>
-        <legend className={labelClass}>MNDA Term</legend>
-        <p className={hintClass}>The length of this MNDA</p>
-        <div className="mt-2 flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm text-zinc-800">
-            <input
-              type="radio"
-              name="mndaTermType"
-              checked={data.mndaTermType === "expires"}
-              onChange={() => update("mndaTermType", "expires")}
-            />
-            Expires
-            <input
-              className="w-16 rounded-md border border-zinc-300 px-2 py-1 text-sm"
-              type="number"
-              min={0}
-              value={data.mndaTermYears}
-              onChange={(e) => update("mndaTermYears", Number(e.target.value))}
-              disabled={data.mndaTermType !== "expires"}
-            />
-            year(s) from Effective Date.
-          </label>
-          <label className="flex items-center gap-2 text-sm text-zinc-800">
-            <input
-              type="radio"
-              name="mndaTermType"
-              checked={data.mndaTermType === "continues"}
-              onChange={() => update("mndaTermType", "continues")}
-            />
-            Continues until terminated in accordance with the terms of the MNDA.
-          </label>
-        </div>
-      </fieldset>
+      <YearsOrOtherChoice
+        legend="MNDA Term"
+        hint="The length of this MNDA"
+        name="mndaTermType"
+        yearsOptionSelected={data.mndaTermType === "expires"}
+        onSelectYearsOption={() => update("mndaTermType", "expires")}
+        years={data.mndaTermYears}
+        onYearsChange={(years) => update("mndaTermYears", years)}
+        yearsPrefix="Expires"
+        yearsSuffix="year(s) from Effective Date."
+        otherOptionSelected={data.mndaTermType === "continues"}
+        onSelectOtherOption={() => update("mndaTermType", "continues")}
+        otherLabel="Continues until terminated in accordance with the terms of the MNDA."
+      />
 
-      <fieldset>
-        <legend className={labelClass}>Term of Confidentiality</legend>
-        <p className={hintClass}>How long Confidential Information is protected</p>
-        <div className="mt-2 flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm text-zinc-800">
-            <input
-              type="radio"
-              name="confidentialityTermType"
-              checked={data.confidentialityTermType === "years"}
-              onChange={() => update("confidentialityTermType", "years")}
-            />
-            <input
-              className="w-16 rounded-md border border-zinc-300 px-2 py-1 text-sm"
-              type="number"
-              min={0}
-              value={data.confidentialityTermYears}
-              onChange={(e) => update("confidentialityTermYears", Number(e.target.value))}
-              disabled={data.confidentialityTermType !== "years"}
-            />
-            year(s) from Effective Date (or until a trade secret no longer qualifies as one).
-          </label>
-          <label className="flex items-center gap-2 text-sm text-zinc-800">
-            <input
-              type="radio"
-              name="confidentialityTermType"
-              checked={data.confidentialityTermType === "perpetuity"}
-              onChange={() => update("confidentialityTermType", "perpetuity")}
-            />
-            In perpetuity.
-          </label>
-        </div>
-      </fieldset>
+      <YearsOrOtherChoice
+        legend="Term of Confidentiality"
+        hint="How long Confidential Information is protected"
+        name="confidentialityTermType"
+        yearsOptionSelected={data.confidentialityTermType === "years"}
+        onSelectYearsOption={() => update("confidentialityTermType", "years")}
+        years={data.confidentialityTermYears}
+        onYearsChange={(years) => update("confidentialityTermYears", years)}
+        yearsSuffix="year(s) from Effective Date (or until a trade secret no longer qualifies as one)."
+        otherOptionSelected={data.confidentialityTermType === "perpetuity"}
+        onSelectOtherOption={() => update("confidentialityTermType", "perpetuity")}
+        otherLabel="In perpetuity."
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Governing Law">

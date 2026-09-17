@@ -1,12 +1,26 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 import { buildNdaDocument } from "@/lib/nda-document";
 import type { NdaFormData } from "@/types/nda";
+
+// The standard 14 PDF fonts (react-pdf's default) only support the WinAnsi/cp1252
+// glyph repertoire, so any accented Latin, Cyrillic, Greek, etc. entered into the
+// form would silently drop or mis-render in the PDF while looking fine in the
+// HTML preview. Registering a Unicode-capable font keeps the two outputs in sync.
+Font.register({
+  family: "Noto Sans",
+  fonts: [
+    { src: "/fonts/NotoSans-Regular.ttf", fontWeight: 400 },
+    { src: "/fonts/NotoSans-Bold.ttf", fontWeight: 700 },
+    { src: "/fonts/NotoSans-Italic.ttf", fontWeight: 400, fontStyle: "italic" },
+  ],
+});
 
 const styles = StyleSheet.create({
   page: {
     paddingTop: 48,
     paddingBottom: 48,
     paddingHorizontal: 56,
+    fontFamily: "Noto Sans",
     fontSize: 10,
     lineHeight: 1.5,
     color: "#18181b",
@@ -48,6 +62,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
     borderTop: "1pt solid #d4d4d8",
+  },
+  tableHeaderRow: {
+    flexDirection: "row",
+    borderBottom: "1pt solid #d4d4d8",
+    paddingVertical: 4,
+  },
+  tableHeaderCell: {
+    flex: 1,
+    fontWeight: 700,
   },
   tableRow: {
     flexDirection: "row",
@@ -129,6 +152,18 @@ export default function NdaPdfDocument({ data }: { data: NdaFormData }) {
             case "table":
               return (
                 <View key={i} style={styles.table}>
+                  {block.headers.some((header) => header.length > 0) ? (
+                    <View style={styles.tableHeaderRow}>
+                      <Text style={[styles.tableLabelCell, { color: "#18181b" }]}>
+                        {block.headers[0]}
+                      </Text>
+                      {block.headers.slice(1).map((header, hIdx) => (
+                        <Text key={hIdx} style={styles.tableHeaderCell}>
+                          {header}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
                   {block.rows.map((row, rIdx) => (
                     <View key={rIdx} style={styles.tableRow}>
                       <Text style={styles.tableLabelCell}>{row[0]}</Text>

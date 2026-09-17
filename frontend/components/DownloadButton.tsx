@@ -30,7 +30,8 @@ export default function DownloadButton({ data }: { data: NdaFormData }) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch {
+    } catch (err) {
+      console.error("Failed to generate NDA PDF:", err);
       setError("Something went wrong generating the PDF. Please try again.");
     } finally {
       setIsGenerating(false);

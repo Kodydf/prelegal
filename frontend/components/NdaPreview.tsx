@@ -65,6 +65,24 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
             case "table":
               return (
                 <table key={i} className="mb-6 w-full border-collapse text-sm">
+                  {block.headers.some((header) => header.length > 0) ? (
+                    <thead>
+                      <tr className="border-b border-zinc-200">
+                        {block.headers.map((header, hIdx) => (
+                          <th
+                            key={hIdx}
+                            className={
+                              hIdx === 0
+                                ? "w-40 py-2 pr-4 text-left font-semibold text-zinc-900"
+                                : "py-2 pr-4 text-left font-semibold text-zinc-900"
+                            }
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                  ) : null}
                   <tbody>
                     {block.rows.map((row, rIdx) => (
                       <tr key={rIdx} className="border-b border-zinc-200">
