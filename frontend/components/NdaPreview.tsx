@@ -5,8 +5,8 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
   const blocks = buildNdaDocument(data);
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-8 shadow-sm sm:p-12">
-      <article className="mx-auto max-w-2xl font-serif text-zinc-900">
+    <div className="rounded-lg border border-silver bg-white p-8 shadow-sm sm:p-12">
+      <article className="mx-auto max-w-2xl font-serif text-black">
         {blocks.map((block, i) => {
           switch (block.type) {
             case "title":
@@ -32,7 +32,7 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
                 <div key={i} className="mb-4">
                   <h3 className="text-sm font-bold">{block.label}</h3>
                   {block.hint ? (
-                    <p className="text-xs italic text-zinc-500">{block.hint}</p>
+                    <p className="text-xs italic text-black/60">{block.hint}</p>
                   ) : null}
                   <p className="text-sm">{block.value}</p>
                 </div>
@@ -42,7 +42,7 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
                 <div key={i} className="mb-4">
                   <h3 className="text-sm font-bold">{block.label}</h3>
                   {block.hint ? (
-                    <p className="text-xs italic text-zinc-500">{block.hint}</p>
+                    <p className="text-xs italic text-black/60">{block.hint}</p>
                   ) : null}
                   <ul className="mt-1 list-none">
                     {block.options.map((option, j) => (
@@ -67,14 +67,14 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
                 <table key={i} className="mb-6 w-full border-collapse text-sm">
                   {block.headers.some((header) => header.length > 0) ? (
                     <thead>
-                      <tr className="border-b border-zinc-200">
+                      <tr className="border-b border-silver">
                         {block.headers.map((header, hIdx) => (
                           <th
                             key={hIdx}
                             className={
                               hIdx === 0
-                                ? "w-40 py-2 pr-4 text-left font-semibold text-zinc-900"
-                                : "py-2 pr-4 text-left font-semibold text-zinc-900"
+                                ? "w-40 py-2 pr-4 text-left font-semibold text-black"
+                                : "py-2 pr-4 text-left font-semibold text-black"
                             }
                           >
                             {header}
@@ -85,13 +85,13 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
                   ) : null}
                   <tbody>
                     {block.rows.map((row, rIdx) => (
-                      <tr key={rIdx} className="border-b border-zinc-200">
+                      <tr key={rIdx} className="border-b border-silver">
                         {row.map((cell, cIdx) => (
                           <td
                             key={cIdx}
                             className={
                               cIdx === 0
-                                ? "w-40 py-2 pr-4 font-semibold text-zinc-600"
+                                ? "w-40 py-2 pr-4 font-semibold text-black/60"
                                 : "py-2 pr-4"
                             }
                           >
@@ -105,7 +105,7 @@ export default function NdaPreview({ data }: { data: NdaFormData }) {
               );
             case "footer":
               return (
-                <p key={i} className="mt-8 border-t border-zinc-200 pt-4 text-xs text-zinc-500">
+                <p key={i} className="mt-8 border-t border-silver pt-4 text-xs text-black/60">
                   {block.text}
                 </p>
               );

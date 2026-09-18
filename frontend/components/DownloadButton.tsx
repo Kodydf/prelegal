@@ -44,7 +44,7 @@ export default function DownloadButton({ data }: { data: NdaFormData }) {
         type="button"
         onClick={handleDownload}
         disabled={isGenerating}
-        className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
+        className="inline-flex items-center justify-center rounded-md bg-navy px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-navy/90 focus:outline-none focus:ring-2 focus:ring-gold disabled:cursor-not-allowed disabled:bg-silver"
       >
         {isGenerating ? "Preparing PDF…" : "Download as PDF"}
       </button>

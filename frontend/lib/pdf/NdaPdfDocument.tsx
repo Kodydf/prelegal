@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     fontFamily: "Noto Sans",
     fontSize: 10,
     lineHeight: 1.5,
-    color: "#18181b",
+    color: "#000000",
   },
   title: {
     fontSize: 18,
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
   fieldHint: {
     fontStyle: "italic",
-    color: "#71717a",
+    color: "#000000",
     fontSize: 9,
   },
   choiceOption: {
@@ -61,11 +61,11 @@ const styles = StyleSheet.create({
   table: {
     marginTop: 8,
     marginBottom: 16,
-    borderTop: "1pt solid #d4d4d8",
+    borderTop: "1pt solid #c0c0c0",
   },
   tableHeaderRow: {
     flexDirection: "row",
-    borderBottom: "1pt solid #d4d4d8",
+    borderBottom: "1pt solid #c0c0c0",
     paddingVertical: 4,
   },
   tableHeaderCell: {
@@ -74,13 +74,13 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: "row",
-    borderBottom: "1pt solid #d4d4d8",
+    borderBottom: "1pt solid #c0c0c0",
     paddingVertical: 4,
   },
   tableLabelCell: {
     width: 110,
     fontWeight: 700,
-    color: "#52525b",
+    color: "#000000",
   },
   tableCell: {
     flex: 1,
@@ -88,9 +88,9 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 20,
     paddingTop: 8,
-    borderTop: "1pt solid #d4d4d8",
+    borderTop: "1pt solid #c0c0c0",
     fontSize: 8,
-    color: "#71717a",
+    color: "#000000",
   },
 });
 
@@ -154,7 +154,7 @@ export default function NdaPdfDocument({ data }: { data: NdaFormData }) {
                 <View key={i} style={styles.table}>
                   {block.headers.some((header) => header.length > 0) ? (
                     <View style={styles.tableHeaderRow}>
-                      <Text style={[styles.tableLabelCell, { color: "#18181b" }]}>
+                      <Text style={[styles.tableLabelCell, { color: "#000000" }]}>
                         {block.headers[0]}
                       </Text>
                       {block.headers.slice(1).map((header, hIdx) => (
