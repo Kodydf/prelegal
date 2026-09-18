@@ -1,9 +1,5 @@
-import NdaApp from "@/components/NdaApp";
+import PlatformApp from "@/components/PlatformApp";
 
 export default function Home() {
-  return (
-    <div className="min-h-full flex-1 bg-zinc-50">
-      <NdaApp />
-    </div>
-  );
+  return <PlatformApp />;
 }

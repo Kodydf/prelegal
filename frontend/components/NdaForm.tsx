@@ -8,10 +8,10 @@ interface NdaFormProps {
   onChange: (data: NdaFormData) => void;
 }
 
-const labelClass = "block text-sm font-medium text-zinc-700";
-const hintClass = "text-xs text-zinc-500";
+const labelClass = "block text-sm font-medium text-black";
+const hintClass = "text-xs text-black/60";
 const inputClass =
-  "mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500";
+  "mt-1 block w-full rounded-md border border-silver px-3 py-2 text-sm shadow-sm focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy";
 
 function Field({
   label,
@@ -65,7 +65,7 @@ function YearsOrOtherChoice({
       <legend className={labelClass}>{legend}</legend>
       <p className={hintClass}>{hint}</p>
       <div className="mt-2 flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-800">
+        <label className="flex items-center gap-2 text-sm text-black">
           <input
             type="radio"
             name={name}
@@ -74,7 +74,7 @@ function YearsOrOtherChoice({
           />
           {yearsPrefix}
           <input
-            className="w-16 rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            className="w-16 rounded-md border border-silver px-2 py-1 text-sm"
             type="number"
             min={0}
             value={years}
@@ -83,7 +83,7 @@ function YearsOrOtherChoice({
           />
           {yearsSuffix}
         </label>
-        <label className="flex items-center gap-2 text-sm text-zinc-800">
+        <label className="flex items-center gap-2 text-sm text-black">
           <input
             type="radio"
             name={name}
@@ -112,8 +112,8 @@ function PartyFields({
     };
 
   return (
-    <fieldset className="rounded-lg border border-zinc-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-zinc-900">{title}</legend>
+    <fieldset className="rounded-lg border border-silver p-4">
+      <legend className="px-1 text-sm font-semibold text-black">{title}</legend>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Print Name">
           <input
