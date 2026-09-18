@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChatError, sendChat, type ChatMessage } from "@/lib/chat";
+import { ChatError, GENERIC_ERROR, sendChat, type ChatMessage } from "@/lib/chat";
 import type { NdaFormData } from "@/types/nda";
 
 const GREETING: ChatMessage = {
@@ -31,11 +31,11 @@ export default function ChatPanel({ data, onChange }: ChatPanelProps) {
     setIsSending(true);
     setError(null);
     try {
-      const result = await sendChat(history.slice(1), data);
+      const result = await sendChat(history.filter((m) => m !== GREETING), data);
       setMessages([...history, { role: "assistant", content: result.reply }]);
       onChange(result.fields);
     } catch (err) {
-      setError(err instanceof ChatError ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof ChatError ? err.message : GENERIC_ERROR);
     } finally {
       setIsSending(false);
     }
@@ -69,13 +69,13 @@ export default function ChatPanel({ data, onChange }: ChatPanelProps) {
         ))}
         {isSending ? <p className="text-sm italic text-black/60">Thinking…</p> : null}
         {error ? (
-          <div role="alert" className="flex items-center gap-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="flex items-center gap-3 rounded-md border border-navy border-l-4 border-l-gold bg-white px-3 py-2 text-sm text-black">
             <span>{error}</span>
             <button
               type="button"
               onClick={() => void send(messages)}
               disabled={isSending}
-              className="shrink-0 rounded-md border border-red-300 px-2 py-1 font-medium hover:bg-red-100 disabled:opacity-50"
+              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 disabled:opacity-50"
             >
               Retry
             </button>

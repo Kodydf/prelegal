@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,6 +10,8 @@ from pydantic import Field
 from app import llm
 from app.db import reset_db
 from app.nda import CamelModel, NdaFields, apply_patch
+
+logger = logging.getLogger(__name__)
 
 MAX_MESSAGES = 60
 
@@ -42,11 +45,13 @@ def create_app() -> FastAPI:
     def chat(request: ChatRequest) -> ChatResponse:
         try:
             turn = llm.chat_turn(request.messages, request.fields)
+            fields = apply_patch(request.fields, turn.fields)
         except llm.LLMUnavailable as exc:
             raise HTTPException(status_code=503, detail="The AI assistant is not configured.") from exc
         except Exception as exc:
+            logger.exception("Chat completion failed")
             raise HTTPException(status_code=502, detail="The AI assistant is unavailable right now.") from exc
-        return ChatResponse(reply=turn.reply, fields=apply_patch(request.fields, turn.fields))
+        return ChatResponse(reply=turn.reply, fields=fields)
 
     # Registered last so /api routes take precedence over the static catch-all.
     static_dir = Path(os.environ.get("PRELEGAL_STATIC_DIR", DEFAULT_STATIC_DIR))

@@ -10,6 +10,8 @@ interface ChatResponse {
   fields: NdaFormData;
 }
 
+export const GENERIC_ERROR = "Something went wrong. Please try again.";
+
 export class ChatError extends Error {}
 
 /** Send the conversation and current document fields; get the AI's reply and the updated fields. */
@@ -26,9 +28,7 @@ export async function sendChat(messages: ChatMessage[], fields: NdaFormData): Pr
   }
   if (!response.ok) {
     const detail = await response.json().then((body) => body?.detail).catch(() => null);
-    throw new ChatError(
-      typeof detail === "string" ? detail : "Something went wrong. Please try again.",
-    );
+    throw new ChatError(typeof detail === "string" ? detail : GENERIC_ERROR);
   }
   return response.json();
 }

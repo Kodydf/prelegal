@@ -5,11 +5,13 @@ from datetime import date
 from typing import Literal
 
 from litellm import completion
+from pydantic import Field
 
 from app.nda import CamelModel, NdaFields, NdaPatch
 
 MODEL = "openrouter/openai/gpt-oss-120b"
 EXTRA_BODY = {"provider": {"order": ["cerebras"]}}
+TIMEOUT_SECONDS = 30
 
 
 class LLMUnavailable(Exception):
@@ -18,7 +20,7 @@ class LLMUnavailable(Exception):
 
 class ChatMessage(CamelModel):
     role: Literal["user", "assistant"]
-    content: str
+    content: str = Field(max_length=2000)
 
 
 class ChatTurn(CamelModel):
@@ -83,6 +85,8 @@ def chat_turn(messages: list[ChatMessage], fields: NdaFields) -> ChatTurn:
         + [{"role": m.role, "content": m.content} for m in messages],
         response_format=ChatTurn,
         reasoning_effort="low",
+        timeout=TIMEOUT_SECONDS,
+        num_retries=1,
         extra_body=EXTRA_BODY,
     )
     return ChatTurn.model_validate_json(response.choices[0].message.content)

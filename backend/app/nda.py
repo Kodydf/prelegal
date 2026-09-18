@@ -1,9 +1,15 @@
 """Mutual NDA field models. The wire format is camelCase to match the frontend's NdaFormData."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+
+# Length limits bound the prompt size and keep LLM-supplied values sane.
+ShortText = Annotated[str, Field(max_length=500)]
+LongText = Annotated[str, Field(max_length=2000)]
+Years = Annotated[int, Field(ge=1, le=99)]
 
 
 class CamelModel(BaseModel):
@@ -11,23 +17,23 @@ class CamelModel(BaseModel):
 
 
 class PartyDetails(CamelModel):
-    print_name: str = ""
-    title: str = ""
-    company: str = ""
-    notice_address: str = ""
-    date: str = ""
+    print_name: ShortText = ""
+    title: ShortText = ""
+    company: ShortText = ""
+    notice_address: ShortText = ""
+    date: ShortText = ""
 
 
 class NdaFields(CamelModel):
-    purpose: str = "Evaluating whether to enter into a business relationship with the other party."
-    effective_date: str = ""
+    purpose: LongText = "Evaluating whether to enter into a business relationship with the other party."
+    effective_date: ShortText = ""
     mnda_term_type: Literal["expires", "continues"] = "expires"
-    mnda_term_years: int = 1
+    mnda_term_years: Years = 1
     confidentiality_term_type: Literal["years", "perpetuity"] = "years"
-    confidentiality_term_years: int = 1
-    governing_law: str = ""
-    jurisdiction: str = ""
-    modifications: str = ""
+    confidentiality_term_years: Years = 1
+    governing_law: ShortText = ""
+    jurisdiction: ShortText = ""
+    modifications: LongText = ""
     party_one: PartyDetails = PartyDetails()
     party_two: PartyDetails = PartyDetails()
 
@@ -59,7 +65,7 @@ class NdaPatch(CamelModel):
 
 
 def apply_patch(fields: NdaFields, patch: NdaPatch) -> NdaFields:
-    """Return a copy of `fields` with every non-null value in `patch` applied."""
+    """Return `fields` with every non-null value in `patch` applied, re-validated against the limits."""
     updates = {}
     for name in NdaPatch.model_fields:
         value = getattr(patch, name)
@@ -67,7 +73,7 @@ def apply_patch(fields: NdaFields, patch: NdaPatch) -> NdaFields:
             continue
         if isinstance(value, PartyPatch):
             current = getattr(fields, name)
-            updates[name] = current.model_copy(update=value.model_dump(exclude_none=True))
+            updates[name] = {**current.model_dump(), **value.model_dump(exclude_none=True)}
         else:
             updates[name] = value
-    return fields.model_copy(update=updates)
+    return NdaFields.model_validate({**fields.model_dump(), **updates})

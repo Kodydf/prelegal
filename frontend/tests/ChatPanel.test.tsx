@@ -88,3 +88,18 @@ describe("ChatPanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't reach the server");
   });
 });
+
+describe("wire format contract", () => {
+  it("default fields use the same keys as the backend NdaFields model", () => {
+    // Keep in sync with backend/tests/test_chat.py::test_wire_format_keys_match_frontend_contract.
+    expect(Object.keys(defaultNdaFormData).sort()).toEqual(
+      [
+        "purpose", "effectiveDate", "mndaTermType", "mndaTermYears", "confidentialityTermType",
+        "confidentialityTermYears", "governingLaw", "jurisdiction", "modifications", "partyOne", "partyTwo",
+      ].sort(),
+    );
+    expect(Object.keys(defaultNdaFormData.partyOne).sort()).toEqual(
+      ["printName", "title", "company", "noticeAddress", "date"].sort(),
+    );
+  });
+});

@@ -5,13 +5,15 @@ A platform for drafting common legal agreements
 
 ## Architecture (V1 foundation)
 
-- `frontend/` — Next.js (statically exported to `out/`), Tailwind. Currently the Mutual NDA creator behind a fake login screen (no real authentication yet).
-- `backend/` — FastAPI (uv project). Serves `/api/*` and the static frontend on port 8000. SQLite is recreated from scratch on every start (`users` table only for now).
+- `frontend/` — Next.js (statically exported to `out/`), Tailwind. Currently a Mutual NDA drafting assistant: a chat with an AI on the left fills in a live document preview on the right, which can be downloaded as a PDF. Sits behind a fake login screen (no real authentication yet).
+- `backend/` — FastAPI (uv project). Serves `/api/*` (including `POST /api/chat`, which calls the LLM) and the static frontend on port 8000. SQLite is recreated from scratch on every start (`users` table only for now).
 - `Dockerfile` — multi-stage build: builds the frontend, then packages it with the backend.
 
 ## Run
 
 Requires Docker. The app is served at http://localhost:8000.
+
+The AI chat needs an OpenRouter API key in a `.env` file at the repo root (`OpenRouter_API_Key=...` or `OPENROUTER_API_KEY=...`); the start scripts pass it to the container. Without it the app runs but the chat shows "The AI assistant is not configured." The chat only works when the page is served by the backend (Docker, or `uvicorn` in `backend/`), not by `next dev`, because the frontend is a static export with no `/api` proxy. The first request after a container starts can take a few seconds (LiteLLM import).
 
 | OS      | Start                    | Stop                    |
 |---------|--------------------------|-------------------------|
@@ -22,6 +24,6 @@ Requires Docker. The app is served at http://localhost:8000.
 ## Test
 
 ```bash
-cd backend && uv run pytest      # backend
+cd backend && uv run pytest      # backend (LLM is mocked; tests marked `live` call the real model when a key is set)
 cd frontend && npm test          # frontend
 ```

@@ -129,6 +129,48 @@ def test_chat_rejects_invalid_requests(client, body):
     assert client.post("/api/chat", json=body).status_code == 422
 
 
+def test_out_of_range_llm_values_give_502_not_bad_fields(client, monkeypatch):
+    monkeypatch.setattr(llm, "completion", fake_completion(mndaTermYears=0))
+    assert client.post("/api/chat", json=BODY).status_code == 502
+
+
+def test_llm_call_has_timeout_and_retry(client, monkeypatch):
+    fake = fake_completion()
+    monkeypatch.setattr(llm, "completion", fake)
+    client.post("/api/chat", json=BODY)
+    assert fake.calls[0]["timeout"] == llm.TIMEOUT_SECONDS
+    assert fake.calls[0]["num_retries"] == 1
+
+
+def test_system_prompt_restricts_to_mutual_nda(client, monkeypatch):
+    fake = fake_completion()
+    monkeypatch.setattr(llm, "completion", fake)
+    client.post("/api/chat", json=BODY)
+    system = fake.calls[0]["messages"][0]["content"]
+    assert "can only draft a Mutual NDA" in system
+    assert "Today's date is" in system
+
+
+@pytest.mark.parametrize("body", [
+    {**BODY, "messages": [{"role": "user", "content": "x" * 2001}]},
+    {**BODY, "fields": {**BODY["fields"], "governingLaw": "x" * 501}},
+    {**BODY, "fields": {**BODY["fields"], "mndaTermYears": 0}},
+    {**BODY, "fields": {**BODY["fields"], "partyOne": {"company": "x" * 501}}},
+])
+def test_chat_rejects_oversized_or_out_of_range_input(client, body):
+    assert client.post("/api/chat", json=body).status_code == 422
+
+
+def test_wire_format_keys_match_frontend_contract():
+    # Keep in sync with frontend/lib/nda-defaults.ts (asserted by a frontend test too).
+    dumped = NdaFields().model_dump(by_alias=True)
+    assert sorted(dumped) == sorted([
+        "purpose", "effectiveDate", "mndaTermType", "mndaTermYears", "confidentialityTermType",
+        "confidentialityTermYears", "governingLaw", "jurisdiction", "modifications", "partyOne", "partyTwo",
+    ])
+    assert sorted(dumped["partyOne"]) == sorted(["printName", "title", "company", "noticeAddress", "date"])
+
+
 @pytest.mark.live
 @pytest.mark.skipif(
     not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OpenRouter_API_Key")),
@@ -141,3 +183,17 @@ def test_live_llm_extracts_fields():
     )
     assert turn.reply
     assert turn.fields.governing_law and "Delaware" in turn.fields.governing_law
+
+
+@pytest.mark.live
+@pytest.mark.skipif(
+    not (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OpenRouter_API_Key")),
+    reason="needs an OpenRouter key",
+)
+def test_live_llm_declines_other_document_types():
+    turn = llm.chat_turn(
+        [llm.ChatMessage(role="user", content="I need a Cloud Service Agreement for my SaaS product.")],
+        NdaFields(),
+    )
+    assert "NDA" in turn.reply or "Disclosure" in turn.reply  # offers the Mutual NDA instead
+    assert all(value is None for value in turn.fields.model_dump().values())
