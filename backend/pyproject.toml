@@ -5,6 +5,7 @@ description = "Prelegal V1 backend (FastAPI)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "litellm>=1.101.0",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -17,6 +18,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["live: calls the real LLM (skipped without an API key)"]
 
 [tool.uv]
 package = false
