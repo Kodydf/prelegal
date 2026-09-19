@@ -9,6 +9,7 @@ from app import llm
 from app.chat import ChatRequest, apply_turn, run_turn, validate_draft
 from app.documents import get_document
 from app.main import create_app
+from tests.conftest import sign_up
 
 MSG = {"role": "user", "content": "We need a contract for our SaaS product"}
 
@@ -48,7 +49,7 @@ def turn(document_id=None, **updates):
 def client(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     with TestClient(create_app()) as c:
-        yield c
+        yield sign_up(c)
 
 
 # --- apply_turn ------------------------------------------------------------------------------
@@ -226,7 +227,7 @@ def test_chat_503_without_api_key(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OpenRouter_API_Key", raising=False)
     with TestClient(create_app()) as c:
-        assert c.post("/api/chat", json=body()).status_code == 503
+        assert sign_up(c).post("/api/chat", json=body()).status_code == 503
 
 
 def test_chat_accepts_mixed_case_env_key(monkeypatch):
@@ -234,7 +235,7 @@ def test_chat_accepts_mixed_case_env_key(monkeypatch):
     monkeypatch.setenv("OpenRouter_API_Key", "from-dotenv")
     monkeypatch.setattr(llm, "completion", fake_completion())
     with TestClient(create_app()) as c:
-        assert c.post("/api/chat", json=body()).status_code == 200
+        assert sign_up(c).post("/api/chat", json=body()).status_code == 200
     assert os.environ["OPENROUTER_API_KEY"] == "from-dotenv"
 
 

@@ -1,37 +1,29 @@
-// Fake login for the V1 foundation: no authentication, just a client-side flag.
-// Replaced by real sign up / sign in against the backend in a later ticket.
-const STORAGE_KEY = "prelegal.user";
+import { ApiError, postJson, request } from "@/lib/api";
 
-export interface FakeUser {
+export interface User {
   email: string;
 }
 
-export function loadUser(): FakeUser | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && typeof (parsed as FakeUser).email === "string") {
-      return { email: (parsed as FakeUser).email };
-    }
-  } catch {
-    // Storage unavailable or corrupt: treat as signed out.
-  }
-  return null;
+export const MIN_PASSWORD_LENGTH = 8;
+
+export async function signUp(email: string, password: string): Promise<User> {
+  return (await postJson("/api/auth/signup", { email, password })).json();
 }
 
-export function saveUser(user: FakeUser): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  } catch {
-    // Non-fatal: the user stays signed in for this page view only.
-  }
+export async function signIn(email: string, password: string): Promise<User> {
+  return (await postJson("/api/auth/signin", { email, password })).json();
 }
 
-export function clearUser(): void {
+export async function signOut(): Promise<void> {
+  await request("/api/auth/signout", { method: "POST" });
+}
+
+/** The signed-in user, or null if there is no valid session. */
+export async function fetchMe(): Promise<User | null> {
   try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Ignore.
+    return await (await request("/api/auth/me")).json();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return null;
+    throw err;
   }
 }

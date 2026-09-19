@@ -8,6 +8,7 @@ import type { DocumentDefinition, DocumentValues } from "@/types/document";
 export type DocumentBlock =
   | { type: "title"; text: string }
   | { type: "subtitle"; text: string }
+  | { type: "notice"; text: string }
   | { type: "heading"; text: string }
   | { type: "paragraph"; text: string }
   | { type: "field"; label: string; hint?: string; value: string }
@@ -16,6 +17,10 @@ export type DocumentBlock =
   | { type: "footer"; text: string };
 
 const NOT_SPECIFIED = "[Not specified]";
+
+/** Shown on every generated document, on screen and in the PDF. */
+export const DRAFT_NOTICE =
+  "DRAFT: This document is a draft and is subject to legal review before it is signed or relied on.";
 
 function orPlaceholder(value: string | undefined, placeholder: string): string {
   const trimmed = (value ?? "").trim();
@@ -26,6 +31,7 @@ export function buildDocumentBlocks(def: DocumentDefinition, values: DocumentVal
   const blocks: DocumentBlock[] = [
     { type: "title", text: def.name },
     { type: "subtitle", text: "Cover Page" },
+    { type: "notice", text: DRAFT_NOTICE },
     {
       type: "paragraph",
       text: "This Cover Page and the Standard Terms that follow together form the agreement. The key terms below apply to the Standard Terms.",

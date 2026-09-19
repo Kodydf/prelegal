@@ -4,12 +4,20 @@ import { useEffect, useState } from "react";
 import ChatPanel from "@/components/ChatPanel";
 import DocumentPreview from "@/components/DocumentPreview";
 import DownloadButton from "@/components/DownloadButton";
-import { ChatError, fetchDocument, GENERIC_ERROR } from "@/lib/chat";
+import { ApiError, GENERIC_ERROR } from "@/lib/api";
+import { fetchDocument } from "@/lib/chat";
+import type { DraftDetail } from "@/lib/drafts";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
-export default function DraftingApp() {
-  const [documentId, setDocumentId] = useState<string | null>(null);
-  const [values, setValues] = useState<DocumentValues>({});
+interface DraftingAppProps {
+  /** A saved draft to continue, or null/undefined to start a new document. */
+  initialDraft?: DraftDetail | null;
+}
+
+export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
+  const [documentId, setDocumentId] = useState<string | null>(initialDraft?.documentId ?? null);
+  const [values, setValues] = useState<DocumentValues>(initialDraft?.values ?? {});
+  const [draftId, setDraftId] = useState<number | null>(initialDraft?.id ?? null);
   const [definition, setDefinition] = useState<DocumentDefinition | null>(null);
   // Tagged with the document it belongs to, so an old error never shows against a newly chosen document.
   const [loadError, setLoadError] = useState<{ id: string; message: string } | null>(null);
@@ -29,7 +37,7 @@ export default function DraftingApp() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setLoadError({ id: documentId, message: err instanceof ChatError ? err.message : GENERIC_ERROR });
+          setLoadError({ id: documentId, message: err instanceof ApiError ? err.message : GENERIC_ERROR });
         }
       });
     return () => {
@@ -37,14 +45,16 @@ export default function DraftingApp() {
     };
   }, [documentId, loadAttempt]);
 
-  const handleChange = (nextId: string | null, nextValues: DocumentValues) => {
+  const handleChange = (nextId: string | null, nextValues: DocumentValues, nextDraftId: number | null) => {
     setDocumentId(nextId);
     setValues(nextValues);
+    setDraftId(nextDraftId);
   };
 
   const startOver = () => {
     setDocumentId(null);
     setValues({});
+    setDraftId(null);
     setDefinition(null);
     setLoadError(null);
     setSession((n) => n + 1);
@@ -55,30 +65,42 @@ export default function DraftingApp() {
   const visibleError = loadError !== null && loadError.id === documentId ? loadError.message : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-8 lg:flex-row lg:items-start">
-      <section className="w-full lg:sticky lg:top-10 lg:w-[420px] lg:shrink-0">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8 lg:flex-row lg:items-start">
+      <section className="w-full lg:sticky lg:top-6 lg:w-[420px] lg:shrink-0">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-navy">Legal Agreement Assistant</h1>
+            <h1 className="text-xl font-semibold text-navy">
+              {initialDraft ? "Continue your document" : "Draft a new document"}
+            </h1>
             <p className="mt-1 text-sm text-black/60">
-              Chat with the assistant about the agreement you need. The document on the right fills in as you
-              talk, and you can download it as a PDF when you&apos;re done.
+              Chat with the assistant about the agreement you need. The document on the right fills in as you talk,
+              and it is saved automatically.
             </p>
           </div>
           <button
             type="button"
             onClick={startOver}
-            className="shrink-0 rounded-md border border-navy px-3 py-1 text-sm font-medium text-navy transition-colors hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
+            className="shrink-0 rounded-lg border border-navy px-3 py-1 text-sm font-medium text-navy transition-colors hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
           >
             Start over
           </button>
         </div>
-        <div className="mt-6">
-          <ChatPanel key={session} documentId={documentId} values={values} onChange={handleChange} />
+        <div className="mt-5">
+          <ChatPanel
+            key={session}
+            documentId={documentId}
+            values={values}
+            draftId={draftId}
+            initialMessages={session === 0 ? initialDraft?.messages : undefined}
+            onChange={handleChange}
+          />
         </div>
         {ready ? (
-          <div className="mt-6">
+          <div className="mt-5">
             <DownloadButton definition={ready} values={values} />
+            <p className="mt-3 text-xs text-black/60">
+              This is a draft and is subject to legal review before it is signed or relied on.
+            </p>
           </div>
         ) : null}
       </section>
@@ -87,12 +109,12 @@ export default function DraftingApp() {
         {ready ? (
           <DocumentPreview definition={ready} values={values} />
         ) : visibleError ? (
-          <div role="alert" className="rounded-lg border border-navy border-l-4 border-l-gold p-6 text-sm text-black">
+          <div role="alert" className="rounded-xl border border-navy border-l-4 border-l-gold p-6 text-sm text-black">
             <p>{visibleError}</p>
             <button
               type="button"
               onClick={() => setLoadAttempt((n) => n + 1)}
-              className="mt-3 rounded-md border border-navy px-3 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
+              className="mt-3 rounded-lg border border-navy px-3 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
             >
               Retry
             </button>
@@ -100,7 +122,7 @@ export default function DraftingApp() {
         ) : documentId ? (
           <p className="p-6 text-sm italic text-black/60">Loading document…</p>
         ) : (
-          <div className="rounded-lg border border-dashed border-silver p-10 text-center text-sm text-black/60">
+          <div className="rounded-xl border border-dashed border-silver p-10 text-center text-sm text-black/60">
             Your document will appear here once you and the assistant have chosen one.
           </div>
         )}

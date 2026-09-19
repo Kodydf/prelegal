@@ -36,6 +36,7 @@ describe("DocumentPdf", () => {
     expect(bytes.length).toBeGreaterThan(2000);
   }, 30000);
 
+  // Regression guard: dynamic page-number footers crashed react-pdf on the two longest real templates.
   it("paginates a long document with hundreds of clauses", async () => {
     const terms = Array.from({ length: 300 }, (_, i) => ({
       type: "item" as const,

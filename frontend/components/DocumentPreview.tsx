@@ -39,6 +39,15 @@ export default function DocumentPreview({
                   {block.text}
                 </p>
               );
+            case "notice":
+              return (
+                <p
+                  key={i}
+                  className="mb-6 rounded-md border border-silver border-l-4 border-l-gold bg-white px-4 py-3 font-sans text-xs font-semibold uppercase tracking-wide text-navy"
+                >
+                  {block.text}
+                </p>
+              );
             case "heading":
               return (
                 <h2 key={i} className="mb-3 mt-8 text-lg font-bold uppercase tracking-wide">

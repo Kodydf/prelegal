@@ -18,12 +18,14 @@ class ChatRequest(CamelModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=MAX_MESSAGES)
     document_id: str | None = None
     values: dict[str, str] = {}
+    draft_id: int | None = None  # the saved draft this conversation belongs to, once it has one
 
 
 class ChatResponse(CamelModel):
     reply: str
     document_id: str | None
     values: dict[str, str]
+    draft_id: int | None  # set once a document is chosen and the conversation is saved
 
 
 def validate_draft(document_id: str | None, values: dict[str, str]) -> DocumentDetail | None:

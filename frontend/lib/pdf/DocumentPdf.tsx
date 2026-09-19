@@ -27,6 +27,22 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 2 },
   subtitle: { fontSize: 10, textAlign: "center", textTransform: "uppercase", marginBottom: 16 },
+  notice: {
+    fontSize: 9,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    marginBottom: 14,
+    padding: 8,
+    border: "1pt solid #003366",
+  },
+  pageFooter: {
+    position: "absolute",
+    bottom: 22,
+    left: 56,
+    right: 56,
+    textAlign: "center",
+    fontSize: 8,
+  },
   heading: { fontSize: 12, fontWeight: 700, textTransform: "uppercase", marginTop: 20, marginBottom: 8 },
   paragraph: { marginBottom: 8 },
   fieldBlock: { marginBottom: 8 },
@@ -77,6 +93,12 @@ export default function DocumentPdf({
             case "subtitle":
               return (
                 <Text key={i} style={styles.subtitle}>
+                  {block.text}
+                </Text>
+              );
+            case "notice":
+              return (
+                <Text key={i} style={styles.notice}>
                   {block.text}
                 </Text>
               );
@@ -147,6 +169,11 @@ export default function DocumentPdf({
               );
           }
         })}
+        {/* Static text on purpose: a `render` function (e.g. page numbers) makes react-pdf's layout fail with
+            "unsupported number" on the longest documents (Cloud Service and Software License Agreements). */}
+        <Text style={styles.pageFooter} fixed>
+          Draft, subject to legal review
+        </Text>
       </Page>
     </Document>
   );
