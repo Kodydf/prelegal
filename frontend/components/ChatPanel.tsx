@@ -2,25 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChatError, GENERIC_ERROR, sendChat, type ChatMessage } from "@/lib/chat";
-import type { NdaFormData } from "@/types/nda";
+import type { DocumentValues } from "@/types/document";
 
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Hi! I'm here to help you draft a Mutual NDA. Tell me a bit about the deal, such as who the two parties are and what you'll be sharing, and I'll fill in the document as we go.",
+    "Hi! I'm here to help you draft a legal agreement. Tell me what you need, for example an NDA, a cloud service agreement, or a partnership, and I'll guide you through it and fill in the document as we go.",
 };
 
 interface ChatPanelProps {
-  data: NdaFormData;
-  onChange: (data: NdaFormData) => void;
+  documentId: string | null;
+  values: DocumentValues;
+  onChange: (documentId: string | null, values: DocumentValues) => void;
 }
 
-export default function ChatPanel({ data, onChange }: ChatPanelProps) {
+export default function ChatPanel({ documentId, values, onChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // "Start over" remounts this panel; a reply still in flight must not repopulate the new draft.
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -31,9 +41,10 @@ export default function ChatPanel({ data, onChange }: ChatPanelProps) {
     setIsSending(true);
     setError(null);
     try {
-      const result = await sendChat(history.filter((m) => m !== GREETING), data);
+      const result = await sendChat(history.filter((m) => m !== GREETING), documentId, values);
+      if (!mounted.current) return;
       setMessages([...history, { role: "assistant", content: result.reply }]);
-      onChange(result.fields);
+      onChange(result.documentId, result.values);
     } catch (err) {
       setError(err instanceof ChatError ? err.message : GENERIC_ERROR);
     } finally {
@@ -75,7 +86,7 @@ export default function ChatPanel({ data, onChange }: ChatPanelProps) {
               type="button"
               onClick={() => void send(messages)}
               disabled={isSending}
-              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 disabled:opacity-50"
+              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
             >
               Retry
             </button>

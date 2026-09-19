@@ -4,5 +4,6 @@ import { afterEach } from "vitest";
 
 afterEach(() => {
   cleanup();
-  window.localStorage.clear();
+  // Not present in tests that opt into the node environment (e.g. PDF generation).
+  if (typeof window !== "undefined") window.localStorage.clear();
 });

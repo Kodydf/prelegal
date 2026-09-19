@@ -2,10 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ChatPanel from "@/components/ChatPanel";
-import { defaultNdaFormData } from "@/lib/nda-defaults";
-import type { NdaFormData } from "@/types/nda";
 
-const updated: NdaFormData = { ...defaultNdaFormData, governingLaw: "Delaware" };
+const values = { governing_law: "" };
 
 function mockFetch(...responses: Array<Response | Error>) {
   const fetchMock = vi.fn();
@@ -17,41 +15,54 @@ function mockFetch(...responses: Array<Response | Error>) {
   return fetchMock;
 }
 
-const ok = (reply: string, fields = updated) =>
-  new Response(JSON.stringify({ reply, fields }), { status: 200 });
+const ok = (reply: string, documentId: string | null = "mutual-nda", v = { governing_law: "Delaware" }) =>
+  new Response(JSON.stringify({ reply, documentId, values: v }), { status: 200 });
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ChatPanel", () => {
   it("starts with a static greeting and makes no request", () => {
     const fetchMock = mockFetch();
-    render(<ChatPanel data={defaultNdaFormData} onChange={() => {}} />);
-    expect(screen.getByText(/help you draft a Mutual NDA/)).toBeInTheDocument();
+    render(<ChatPanel documentId={null} values={{}} onChange={() => {}} />);
+    expect(screen.getByText(/help you draft a legal agreement/)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("sends the message, shows the reply and updates the document fields", async () => {
+  it("sends the message and draft, shows the reply and reports the new document and values", async () => {
     const fetchMock = mockFetch(ok("Which city for disputes?"));
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(<ChatPanel data={defaultNdaFormData} onChange={onChange} />);
+    render(<ChatPanel documentId="mutual-nda" values={values} onChange={onChange} />);
 
     await user.type(screen.getByLabelText("Message"), "Delaware law please");
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("Which city for disputes?")).toBeInTheDocument();
     expect(screen.getByText("Delaware law please")).toBeInTheDocument();
-    expect(onChange).toHaveBeenCalledWith(updated);
+    expect(onChange).toHaveBeenCalledWith("mutual-nda", { governing_law: "Delaware" });
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.messages).toEqual([{ role: "user", content: "Delaware law please" }]); // no greeting
-    expect(body.fields).toEqual(defaultNdaFormData);
+    expect(body.documentId).toBe("mutual-nda");
+    expect(body.values).toEqual(values);
+  });
+
+  it("sends a null document id before one is chosen and passes a null back when none was chosen", async () => {
+    const fetchMock = mockFetch(ok("We can't do leases; closest is the Pilot Agreement.", null, {} as never));
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ChatPanel documentId={null} values={{}} onChange={onChange} />);
+    await user.type(screen.getByLabelText("Message"), "I need a lease");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText(/closest is the Pilot Agreement/);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).documentId).toBeNull();
+    expect(onChange).toHaveBeenCalledWith(null, {});
   });
 
   it("ignores empty messages", async () => {
     const fetchMock = mockFetch();
     const user = userEvent.setup();
-    render(<ChatPanel data={defaultNdaFormData} onChange={() => {}} />);
+    render(<ChatPanel documentId={null} values={{}} onChange={() => {}} />);
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     await user.type(screen.getByLabelText("Message"), "   ");
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
@@ -65,7 +76,7 @@ describe("ChatPanel", () => {
     );
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(<ChatPanel data={defaultNdaFormData} onChange={onChange} />);
+    render(<ChatPanel documentId={null} values={{}} onChange={onChange} />);
 
     await user.type(screen.getByLabelText("Message"), "hello");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -82,24 +93,9 @@ describe("ChatPanel", () => {
   it("shows a friendly error when the network fails", async () => {
     mockFetch(new TypeError("Failed to fetch"));
     const user = userEvent.setup();
-    render(<ChatPanel data={defaultNdaFormData} onChange={() => {}} />);
+    render(<ChatPanel documentId={null} values={{}} onChange={() => {}} />);
     await user.type(screen.getByLabelText("Message"), "hello");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't reach the server");
-  });
-});
-
-describe("wire format contract", () => {
-  it("default fields use the same keys as the backend NdaFields model", () => {
-    // Keep in sync with backend/tests/test_chat.py::test_wire_format_keys_match_frontend_contract.
-    expect(Object.keys(defaultNdaFormData).sort()).toEqual(
-      [
-        "purpose", "effectiveDate", "mndaTermType", "mndaTermYears", "confidentialityTermType",
-        "confidentialityTermYears", "governingLaw", "jurisdiction", "modifications", "partyOne", "partyTwo",
-      ].sort(),
-    );
-    expect(Object.keys(defaultNdaFormData.partyOne).sort()).toEqual(
-      ["printName", "title", "company", "noticeAddress", "date"].sort(),
-    );
   });
 });
