@@ -2,7 +2,7 @@
 
 import AuthGate from "@/components/AuthGate";
 import AppHeader from "@/components/AppHeader";
-import NdaApp from "@/components/NdaApp";
+import DraftingApp from "@/components/DraftingApp";
 
 export default function PlatformApp() {
   return (
@@ -10,7 +10,7 @@ export default function PlatformApp() {
       {(user, signOut) => (
         <div className="min-h-full flex-1 bg-white">
           <AppHeader user={user} onSignOut={signOut} />
-          <NdaApp />
+          <DraftingApp />
         </div>
       )}
     </AuthGate>

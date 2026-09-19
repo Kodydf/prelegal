@@ -2,18 +2,23 @@
 
 import { useState } from "react";
 import { pdf } from "@react-pdf/renderer";
-import NdaPdfDocument from "@/lib/pdf/NdaPdfDocument";
-import type { NdaFormData } from "@/types/nda";
+import DocumentPdf from "@/lib/pdf/DocumentPdf";
+import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
-function fileNameFor(data: NdaFormData): string {
-  const parties = [data.partyOne.company, data.partyTwo.company]
-    .map((name) => name.trim())
+function fileNameFor(definition: DocumentDefinition, values: DocumentValues): string {
+  const companies = definition.parties
+    .map((party) => (values[`${party.key}_company`] ?? "").trim())
     .filter(Boolean);
-  const base = parties.length > 0 ? `Mutual-NDA-${parties.join("-and-")}` : "Mutual-NDA";
-  return `${base.replace(/[^a-zA-Z0-9-]+/g, "-")}.pdf`;
+  const base = [definition.name, ...(companies.length > 0 ? [companies.join(" and ")] : [])].join(" ");
+  return `${base.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "")}.pdf`;
 }
 
-export default function DownloadButton({ data }: { data: NdaFormData }) {
+interface DownloadButtonProps {
+  definition: DocumentDefinition;
+  values: DocumentValues;
+}
+
+export default function DownloadButton({ definition, values }: DownloadButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,17 +26,17 @@ export default function DownloadButton({ data }: { data: NdaFormData }) {
     setIsGenerating(true);
     setError(null);
     try {
-      const blob = await pdf(<NdaPdfDocument data={data} />).toBlob();
+      const blob = await pdf(<DocumentPdf definition={definition} values={values} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = fileNameFor(data);
+      link.download = fileNameFor(definition, values);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Failed to generate NDA PDF:", err);
+      console.error("Failed to generate PDF:", err);
       setError("Something went wrong generating the PDF. Please try again.");
     } finally {
       setIsGenerating(false);

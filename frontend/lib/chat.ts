@@ -1,28 +1,24 @@
-import type { NdaFormData } from "@/types/nda";
+import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   reply: string;
-  fields: NdaFormData;
+  documentId: string | null;
+  values: DocumentValues;
 }
 
 export const GENERIC_ERROR = "Something went wrong. Please try again.";
 
 export class ChatError extends Error {}
 
-/** Send the conversation and current document fields; get the AI's reply and the updated fields. */
-export async function sendChat(messages: ChatMessage[], fields: NdaFormData): Promise<ChatResponse> {
+async function request(url: string, init?: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, fields }),
-    });
+    response = await fetch(url, init);
   } catch {
     throw new ChatError("Couldn't reach the server. Check your connection and try again.");
   }
@@ -30,5 +26,24 @@ export async function sendChat(messages: ChatMessage[], fields: NdaFormData): Pr
     const detail = await response.json().then((body) => body?.detail).catch(() => null);
     throw new ChatError(typeof detail === "string" ? detail : GENERIC_ERROR);
   }
+  return response;
+}
+
+/** Send the conversation and current draft; get the AI's reply and the updated draft. */
+export async function sendChat(
+  messages: ChatMessage[],
+  documentId: string | null,
+  values: DocumentValues,
+): Promise<ChatResponse> {
+  const response = await request("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, documentId, values }),
+  });
+  return response.json();
+}
+
+export async function fetchDocument(id: string): Promise<DocumentDefinition> {
+  const response = await request(`/api/documents/${encodeURIComponent(id)}`);
   return response.json();
 }

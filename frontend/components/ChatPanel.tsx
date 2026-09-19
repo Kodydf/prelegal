@@ -2,20 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChatError, GENERIC_ERROR, sendChat, type ChatMessage } from "@/lib/chat";
-import type { NdaFormData } from "@/types/nda";
+import type { DocumentValues } from "@/types/document";
 
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Hi! I'm here to help you draft a Mutual NDA. Tell me a bit about the deal, such as who the two parties are and what you'll be sharing, and I'll fill in the document as we go.",
+    "Hi! I'm here to help you draft a legal agreement. Tell me what you need, for example an NDA, a cloud service agreement, or a partnership, and I'll guide you through it and fill in the document as we go.",
 };
 
 interface ChatPanelProps {
-  data: NdaFormData;
-  onChange: (data: NdaFormData) => void;
+  documentId: string | null;
+  values: DocumentValues;
+  onChange: (documentId: string | null, values: DocumentValues) => void;
 }
 
-export default function ChatPanel({ data, onChange }: ChatPanelProps) {
+export default function ChatPanel({ documentId, values, onChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -31,9 +32,9 @@ export default function ChatPanel({ data, onChange }: ChatPanelProps) {
     setIsSending(true);
     setError(null);
     try {
-      const result = await sendChat(history.filter((m) => m !== GREETING), data);
+      const result = await sendChat(history.filter((m) => m !== GREETING), documentId, values);
       setMessages([...history, { role: "assistant", content: result.reply }]);
-      onChange(result.fields);
+      onChange(result.documentId, result.values);
     } catch (err) {
       setError(err instanceof ChatError ? err.message : GENERIC_ERROR);
     } finally {

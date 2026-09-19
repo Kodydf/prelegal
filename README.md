@@ -5,8 +5,9 @@ A platform for drafting common legal agreements
 
 ## Architecture (V1 foundation)
 
-- `frontend/` — Next.js (statically exported to `out/`), Tailwind. Currently a Mutual NDA drafting assistant: a chat with an AI on the left fills in a live document preview on the right, which can be downloaded as a PDF. Sits behind a fake login screen (no real authentication yet).
+- `frontend/` — Next.js (statically exported to `out/`), Tailwind. A drafting assistant for all 11 supported agreement types (Mutual NDA, Cloud Service Agreement, Design Partner, SLA, Professional Services, DPA, Software License, Partnership, BAA, Pilot, AI Addendum): a chat with an AI on the left guides you through the document and fills in a live preview on the right, which can be downloaded as a PDF. If you ask for something we can't generate, the assistant says so and offers the closest supported document. Sits behind a fake login screen (no real authentication yet).
 - `backend/` — FastAPI (uv project). Serves `/api/*` (including `POST /api/chat`, which calls the LLM) and the static frontend on port 8000. SQLite is recreated from scratch on every start (`users` table only for now).
+- `templates/` and `catalog.json` — the Common Paper legal templates. `backend/app/definitions.py` lists, per document, the party roles and key-term fields the assistant collects (the templates hold only the legal text); `backend/app/terms.py` parses the templates. A generated cover page plus the verbatim standard terms make up each document. To add a document: add its template and catalog entry, then a definition.
 - `Dockerfile` — multi-stage build: builds the frontend, then packages it with the backend.
 
 ## Run
