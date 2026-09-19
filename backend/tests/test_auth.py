@@ -53,6 +53,13 @@ def test_session_cookie_is_httponly_and_samesite(client):
     assert "httponly" in header and "samesite=lax" in header and "path=/" in header
 
 
+def test_cookie_is_secure_only_when_configured(client, monkeypatch):
+    assert "secure" not in client.post("/api/auth/signup", json=CREDS).headers["set-cookie"].lower()
+    monkeypatch.setenv("PRELEGAL_COOKIE_SECURE", "1")
+    other = {"email": "b@example.com", "password": "correct horse"}
+    assert "secure" in client.post("/api/auth/signup", json=other).headers["set-cookie"].lower()
+
+
 def test_password_is_stored_hashed_and_token_only_as_a_hash(client):
     client.post("/api/auth/signup", json=CREDS)
     token = client.cookies.get(SESSION_COOKIE)

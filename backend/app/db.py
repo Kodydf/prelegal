@@ -52,14 +52,17 @@ def reset_db(path: Path | None = None) -> Path:
 
 
 def get_db() -> Iterator[sqlite3.Connection]:
-    """FastAPI dependency: one connection per request, committed on success and always closed."""
+    """FastAPI dependency: one connection per request, always closed.
+
+    Writes commit explicitly inside the store functions. FastAPI runs a dependency's cleanup after the
+    response has been sent, so committing here would let a fast follow-up request miss the write.
+    """
     # FastAPI may run a dependency and its endpoint on different worker threads.
     conn = sqlite3.connect(get_db_path(), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
-        conn.commit()
     except BaseException:
         conn.rollback()
         raise

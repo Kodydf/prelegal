@@ -1,5 +1,6 @@
 """Sign up / sign in / sign out, with a server-side session in an HttpOnly cookie."""
 
+import os
 import re
 import sqlite3
 
@@ -52,6 +53,8 @@ def _start_session(db: sqlite3.Connection, response: Response, user: store.User)
         token,
         max_age=int(store.SESSION_LIFETIME.total_seconds()),
         httponly=True,
+        # Set PRELEGAL_COOKIE_SECURE=1 when serving over HTTPS so the cookie is never sent over plain HTTP.
+        secure=os.environ.get("PRELEGAL_COOKIE_SECURE", "").lower() in ("1", "true", "yes"),
         samesite="lax",
         path="/",
     )

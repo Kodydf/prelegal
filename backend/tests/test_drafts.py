@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from app import llm
+from app import llm, store
 from app.db import get_db_path
 from app.main import create_app
 from tests.conftest import sign_up
@@ -167,3 +167,90 @@ def test_database_is_reset_when_the_server_restarts(monkeypatch):
         assert restarted.get("/api/auth/me").status_code == 401
         sign_up(restarted, "ann@example.com")  # the email is free again
         assert restarted.get("/api/drafts").json() == []
+
+
+# --- Durability, history limits and the per-user cap ------------------------------------------
+
+
+def test_writes_are_committed_before_the_store_call_returns():
+    """A second connection must see each write immediately (cleanup after the response can't be relied on)."""
+    from app.db import get_db_path, reset_db
+    from app.security import hash_password
+
+    reset_db()
+    writer = sqlite3.connect(get_db_path())
+    writer.row_factory = sqlite3.Row
+    reader = sqlite3.connect(get_db_path())
+    try:
+        user = store.create_user(writer, "ann@example.com", hash_password("correct horse"))
+        assert reader.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
+        store.create_session(writer, user.id, "token-1")
+        assert reader.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 1
+        draft = store.save_draft(writer, user.id, None, "mutual-nda", {}, [{"role": "user", "content": "hi"}])
+        assert reader.execute("SELECT COUNT(*) FROM drafts").fetchone()[0] == 1
+        store.delete_draft(writer, user.id, draft.id)
+        assert reader.execute("SELECT COUNT(*) FROM drafts").fetchone()[0] == 0
+        store.delete_session(writer, "token-1")
+        assert reader.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
+    finally:
+        writer.close()
+        reader.close()
+
+
+def test_a_long_conversation_can_always_be_resumed_and_continued(client, monkeypatch):
+    fake_calls = []
+
+    def completion(**kwargs):
+        fake_calls.append(kwargs)
+        content = json.dumps({"reply": "ok", "documentId": "mutual-nda", "updates": []})
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+
+    monkeypatch.setattr(llm, "completion", completion)
+    long_history = [user_msg(f"message {i}") for i in range(200)]  # the most a request may carry
+    first = chat(client, long_history, "mutual-nda", {}, None)
+    assert first.status_code == 200
+    draft_id = first.json()["draftId"]
+
+    saved = client.get(f"/api/drafts/{draft_id}").json()["messages"]
+    assert len(saved) == store.MAX_SAVED_MESSAGES  # only the most recent are kept
+    assert saved[-1]["content"] == "ok" and saved[-2]["content"] == "message 199"
+
+    # Resuming and continuing is fine: what the client sends back is again within the request limit.
+    resumed = saved + [user_msg("one more")]
+    assert chat(client, resumed, "mutual-nda", {}, draft_id).status_code == 200
+
+    assert chat(client, [user_msg("x")] * 201, "mutual-nda", {}, draft_id).status_code == 422
+
+
+def test_the_model_only_sees_the_latest_messages(client, monkeypatch):
+    seen = []
+
+    def completion(**kwargs):
+        seen.append(kwargs["messages"])
+        content = json.dumps({"reply": "ok", "documentId": None, "updates": []})
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+
+    monkeypatch.setattr(llm, "completion", completion)
+    chat(client, [user_msg(f"m{i}") for i in range(120)])
+    sent = seen[0]
+    assert sent[0]["role"] == "system"
+    assert len(sent) - 1 == llm.MODEL_HISTORY
+    assert sent[-1]["content"] == "m119"
+
+
+def test_draft_cap_blocks_new_drafts_before_calling_the_model_but_not_updates(client, monkeypatch):
+    monkeypatch.setattr(store, "MAX_DRAFTS_PER_USER", 2)
+    monkeypatch.setattr(llm, "completion", scripted(("ok", "mutual-nda", {})))
+    first = chat(client, [user_msg("one")]).json()["draftId"]
+    chat(client, [user_msg("two")])
+
+    calls = []
+    monkeypatch.setattr(llm, "completion", lambda **kw: calls.append(kw))
+    blocked = chat(client, [user_msg("three")])
+    assert blocked.status_code == 409 and "limit" in blocked.json()["detail"]
+    assert calls == []  # no model call was spent
+
+    monkeypatch.setattr(llm, "completion", scripted(("ok", "mutual-nda", {})))
+    assert chat(client, [user_msg("again")], "mutual-nda", {}, first).status_code == 200  # updates still work
+    client.delete(f"/api/drafts/{first}")
+    assert chat(client, [user_msg("three")]).status_code == 200  # room again after deleting one

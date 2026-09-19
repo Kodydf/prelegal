@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import { PDF_FOOTER } from "@/lib/disclaimer";
 import { buildDocumentBlocks, splitBold } from "@/lib/document-model";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
@@ -172,7 +173,7 @@ export default function DocumentPdf({
         {/* Static text on purpose: a `render` function (e.g. page numbers) makes react-pdf's layout fail with
             "unsupported number" on the longest documents (Cloud Service and Software License Agreements). */}
         <Text style={styles.pageFooter} fixed>
-          Draft, subject to legal review
+          {PDF_FOOTER}
         </Text>
       </Page>
     </Document>

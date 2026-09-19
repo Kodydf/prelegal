@@ -138,4 +138,44 @@ describe("PlatformApp", () => {
     expect(screen.getByText(/^DRAFT: This document is a draft/)).toBeInTheDocument();
     expect(screen.getByText(/This is a draft and is subject to legal review before it is signed or relied on/)).toBeInTheDocument();
   });
+
+  it("after Start over on a resumed draft, the heading no longer says Continue", async () => {
+    routeFetch({
+      ...baseRoutes,
+      "GET /api/drafts": () => json([summary]),
+      "GET /api/drafts/5": () => json(detail),
+    });
+    render(<PlatformApp />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "My documents" }));
+    await user.click(await screen.findByRole("button", { name: "Open" }));
+    await screen.findByRole("heading", { name: "Continue your document" });
+
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    expect(screen.getByRole("heading", { name: "Draft a new document" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Continue your document" })).not.toBeInTheDocument();
+  });
+
+  it("moves keyboard focus to the new screen when navigating", async () => {
+    routeFetch({ ...baseRoutes, "GET /api/drafts": () => json([summary]) });
+    render(<PlatformApp />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "My documents" }));
+    await screen.findByRole("heading", { name: "My documents" });
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("has one page-level heading on the drafting screen (the document title is a sub-heading)", async () => {
+    routeFetch({
+      ...baseRoutes,
+      "GET /api/drafts": () => json([summary]),
+      "GET /api/drafts/5": () => json(detail),
+    });
+    render(<PlatformApp />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "My documents" }));
+    await user.click(await screen.findByRole("button", { name: "Open" }));
+    await screen.findByRole("heading", { name: "Service Level Agreement" });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
 });

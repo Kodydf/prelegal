@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ApiError, GENERIC_ERROR } from "@/lib/api";
+import { Alert, buttonClass, focusRing, primaryButtonClass } from "@/components/ui";
+import { errorMessage } from "@/lib/api";
 import { sendChat, type ChatMessage } from "@/lib/chat";
 import type { DocumentValues } from "@/types/document";
 
@@ -10,6 +11,10 @@ const GREETING: ChatMessage = {
   content:
     "Hi! I'm here to help you draft a legal agreement. Tell me what you need, for example an NDA, a cloud service agreement, or a partnership, and I'll guide you through it and fill in the document as we go.",
 };
+
+// Only the most recent messages are sent (and saved): the draft values carry everything settled so far,
+// and this keeps a long conversation within what the server accepts.
+const CLIENT_HISTORY = 100;
 
 const STARTERS = ["I need an NDA", "A contract for my SaaS product", "A partnership agreement"];
 
@@ -48,12 +53,12 @@ export default function ChatPanel({ documentId, values, draftId, initialMessages
     setIsSending(true);
     setError(null);
     try {
-      const result = await sendChat(history.filter((m) => m !== GREETING), documentId, values, draftId);
+      const result = await sendChat(history.filter((m) => m !== GREETING).slice(-CLIENT_HISTORY), documentId, values, draftId);
       if (!mounted.current) return;
       setMessages([...history, { role: "assistant", content: result.reply }]);
       onChange(result.documentId, result.values, result.draftId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : GENERIC_ERROR);
+      setError(errorMessage(err));
     } finally {
       setIsSending(false);
     }
@@ -95,7 +100,7 @@ export default function ChatPanel({ documentId, values, draftId, initialMessages
                 key={starter}
                 type="button"
                 onClick={() => submit(starter)}
-                className="rounded-full border border-navy px-3 py-1 text-xs font-medium text-navy transition-colors hover:bg-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                className={`rounded-full border border-navy px-3 py-1 text-xs font-medium text-navy transition-colors hover:bg-navy hover:text-white ${focusRing}`}
               >
                 {starter}
               </button>
@@ -104,17 +109,17 @@ export default function ChatPanel({ documentId, values, draftId, initialMessages
         ) : null}
         {isSending ? <p className="text-sm italic text-black/60">Thinking…</p> : null}
         {error ? (
-          <div role="alert" className="flex items-center gap-3 rounded-lg border border-navy border-l-4 border-l-gold bg-white px-3 py-2 text-sm text-black">
+          <Alert className="flex items-center gap-3">
             <span>{error}</span>
             <button
               type="button"
               onClick={() => void send(messages)}
               disabled={isSending}
-              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
+              className={`${buttonClass} shrink-0 px-2 py-1 disabled:opacity-50`}
             >
               Retry
             </button>
-          </div>
+          </Alert>
         ) : null}
         <div ref={endRef} />
       </div>
@@ -136,7 +141,7 @@ export default function ChatPanel({ documentId, values, draftId, initialMessages
         <button
           type="submit"
           disabled={isSending || input.trim().length === 0}
-          className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy/90 focus:outline-none focus:ring-2 focus:ring-gold disabled:cursor-not-allowed disabled:bg-silver"
+          className={primaryButtonClass}
         >
           Send
         </button>

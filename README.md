@@ -16,6 +16,8 @@ Requires Docker. The app is served at http://localhost:8000.
 
 The AI chat needs an OpenRouter API key in a `.env` file at the repo root (`OpenRouter_API_Key=...` or `OPENROUTER_API_KEY=...`); the start scripts pass it to the container. Without it the app runs but the chat shows "The AI assistant is not configured." The chat only works when the page is served by the backend (Docker, or `uvicorn` in `backend/`), not by `next dev`, because the frontend is a static export with no `/api` proxy. The first request after a container starts can take a few seconds (LiteLLM import).
 
+Accounts and saved documents live in the temporary SQLite database, so they are cleared whenever the server restarts. Each user can keep up to 100 saved documents, and a saved conversation keeps its most recent 100 messages. If you serve the app over HTTPS, set `PRELEGAL_COOKIE_SECURE=1` (for example in `.env`) so the session cookie is never sent over plain HTTP. Run the backend with a single worker: the database reset and in-process state assume it.
+
 | OS      | Start                    | Stop                    |
 |---------|--------------------------|-------------------------|
 | Mac     | `scripts/start-mac.sh`   | `scripts/stop-mac.sh`   |

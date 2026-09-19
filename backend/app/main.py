@@ -9,12 +9,13 @@ from fastapi.staticfiles import StaticFiles
 
 from app import api_auth, api_drafts, llm, store
 from app.api_auth import current_user
-from app.chat import ChatRequest, ChatResponse, run_turn, validate_draft
+from app.chat import ChatRequest, ChatResponse, persist_turn, run_turn, validate_draft
 from app.db import get_db, reset_db
 from app.documents import DocumentDetail, DocumentSummary, get_document, list_documents, load_documents
 
 logger = logging.getLogger(__name__)
 
+DRAFT_LIMIT_MESSAGE = f"You have reached the limit of {store.MAX_DRAFTS_PER_USER} saved documents. Delete one to start another."
 DEFAULT_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
@@ -57,6 +58,8 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if request.draft_id is not None and store.get_draft(db, user.id, request.draft_id) is None:
             raise HTTPException(status_code=404, detail="Document not found.")
+        if request.draft_id is None and store.count_drafts(db, user.id) >= store.MAX_DRAFTS_PER_USER:
+            raise HTTPException(status_code=409, detail=DRAFT_LIMIT_MESSAGE)  # before spending a model call
         try:
             reply, selected, values = run_turn(request, current)
         except llm.LLMUnavailable as exc:
@@ -65,11 +68,10 @@ def create_app() -> FastAPI:
             logger.exception("Chat completion failed")
             raise HTTPException(status_code=502, detail="The AI assistant is unavailable right now.") from exc
 
-        draft_id = None
-        if selected is not None:  # nothing worth saving until a document has been chosen
-            transcript = [m.model_dump() for m in request.messages] + [{"role": "assistant", "content": reply}]
-            saved = store.save_draft(db, user.id, request.draft_id, selected.id, values, transcript)
-            draft_id = saved.id if saved else None
+        try:
+            draft_id = persist_turn(db, user, request, selected, values, reply)
+        except store.DraftLimitReached as exc:
+            raise HTTPException(status_code=409, detail=DRAFT_LIMIT_MESSAGE) from exc
         return ChatResponse(
             reply=reply, document_id=selected.id if selected else None, values=values, draft_id=draft_id
         )

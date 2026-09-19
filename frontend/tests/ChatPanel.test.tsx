@@ -133,4 +133,22 @@ describe("ChatPanel", () => {
     await screen.findByText("Next question?");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages).toEqual([...saved, { role: "user", content: "Northwind" }]);
   });
+
+  it("sends at most the latest 100 messages, so a long conversation stays within what the server accepts", async () => {
+    const fetchMock = mockFetch(ok("Still here."));
+    const saved = Array.from({ length: 150 }, (_, i) => ({
+      role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+      content: `saved ${i}`,
+    }));
+    const user = userEvent.setup();
+    render(<ChatPanel documentId="mutual-nda" values={values} draftId={7} initialMessages={saved} onChange={() => {}} />);
+    await user.type(screen.getByLabelText("Message"), "latest");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Still here.");
+
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body).messages;
+    expect(sent).toHaveLength(100);
+    expect(sent.at(-1)).toEqual({ role: "user", content: "latest" });
+    expect(sent[0].content).toBe("saved 51"); // the oldest ones were dropped
+  });
 });

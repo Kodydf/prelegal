@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 from app.security import hash_token
 
 SESSION_LIFETIME = timedelta(days=7)
+MAX_DRAFTS_PER_USER = 100
+MAX_SAVED_MESSAGES = 100  # the most recent messages of a conversation are kept
 
 
 def _now() -> datetime:
@@ -36,6 +38,7 @@ def create_user(db: sqlite3.Connection, email: str, password_hash: str) -> User:
         cursor = db.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, password_hash))
     except sqlite3.IntegrityError as exc:
         raise EmailTaken(email) from exc
+    db.commit()
     return User(id=cursor.lastrowid, email=email)
 
 
@@ -50,6 +53,7 @@ def create_session(db: sqlite3.Connection, user_id: int, token: str) -> None:
         "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
         (hash_token(token), user_id, _iso(_now() + SESSION_LIFETIME)),
     )
+    db.commit()
 
 
 def user_for_session(db: sqlite3.Connection, token: str) -> User | None:
@@ -63,9 +67,14 @@ def user_for_session(db: sqlite3.Connection, token: str) -> User | None:
 
 def delete_session(db: sqlite3.Connection, token: str) -> None:
     db.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
+    db.commit()
 
 
 # --- Drafts ----------------------------------------------------------------------------------
+
+
+class DraftLimitReached(Exception):
+    pass
 
 
 @dataclass
@@ -85,6 +94,10 @@ def _draft(row: sqlite3.Row) -> Draft:
         messages=json.loads(row["messages_json"]),
         updated_at=row["updated_at"],
     )
+
+
+def count_drafts(db: sqlite3.Connection, user_id: int) -> int:
+    return db.execute("SELECT COUNT(*) FROM drafts WHERE user_id = ?", (user_id,)).fetchone()[0]
 
 
 def list_drafts(db: sqlite3.Connection, user_id: int) -> list[Draft]:
@@ -107,8 +120,10 @@ def save_draft(
 ) -> Draft | None:
     """Create a draft (draft_id None) or update the user's own draft. None if draft_id isn't theirs."""
     now = _iso(_now())
-    values_json, messages_json = json.dumps(values), json.dumps(messages)
+    values_json, messages_json = json.dumps(values), json.dumps(messages[-MAX_SAVED_MESSAGES:])
     if draft_id is None:
+        if count_drafts(db, user_id) >= MAX_DRAFTS_PER_USER:
+            raise DraftLimitReached
         cursor = db.execute(
             "INSERT INTO drafts (user_id, document_id, values_json, messages_json, created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?)",
@@ -123,9 +138,11 @@ def save_draft(
         )
         if cursor.rowcount == 0:
             return None
+    db.commit()
     return get_draft(db, user_id, draft_id)
 
 
 def delete_draft(db: sqlite3.Connection, user_id: int, draft_id: int) -> bool:
     cursor = db.execute("DELETE FROM drafts WHERE id = ? AND user_id = ?", (draft_id, user_id))
+    db.commit()
     return cursor.rowcount > 0

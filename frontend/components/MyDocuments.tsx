@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ApiError, GENERIC_ERROR } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { Alert, buttonClass, focusRing, primaryButtonClass } from "@/components/ui";
+import { errorMessage } from "@/lib/api";
 import { deleteDraft, listDrafts, type DraftSummary } from "@/lib/drafts";
 
 /** "2026-09-19T02:49:09+00:00" -> "Sep 19, 2026, 2:49 AM" in the viewer's locale and time zone. */
@@ -16,9 +17,6 @@ interface MyDocumentsProps {
   onNew: () => void;
 }
 
-const buttonClass =
-  "rounded-lg border border-navy px-3 py-1.5 text-sm font-medium text-navy transition-colors hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold";
-
 export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
   const [drafts, setDrafts] = useState<DraftSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +24,12 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
   // Deleting takes two clicks so a document isn't lost by accident.
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Keyboard users must not lose their place when the buttons swap: focus follows the action.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const deleteButtons = useRef(new Map<number, HTMLButtonElement>());
+  const returnFocusTo = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,12 +40,26 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
         setError(null);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : GENERIC_ERROR);
+        if (!cancelled) setError(errorMessage(err));
       });
     return () => {
       cancelled = true;
     };
   }, [attempt]);
+
+  useEffect(() => {
+    if (confirmingId !== null) {
+      confirmRef.current?.focus();
+    } else if (returnFocusTo.current !== null) {
+      deleteButtons.current.get(returnFocusTo.current)?.focus();
+      returnFocusTo.current = null;
+    }
+  }, [confirmingId]);
+
+  const cancelDelete = () => {
+    returnFocusTo.current = confirmingId;
+    setConfirmingId(null);
+  };
 
   const remove = async (id: number) => {
     setDeletingId(id);
@@ -50,8 +68,9 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
       setDrafts((current) => current?.filter((d) => d.id !== id) ?? null);
       setConfirmingId(null);
       setError(null);
+      headingRef.current?.focus();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : GENERIC_ERROR);
+      setError(errorMessage(err));
     } finally {
       setDeletingId(null);
     }
@@ -61,27 +80,25 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
     <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-navy">My documents</h1>
+          <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold text-navy outline-none">
+            My documents
+          </h1>
           <p className="mt-1 text-sm text-black/60">Your saved drafts. Open one to keep editing or download it again.</p>
         </div>
-        <button
-          type="button"
-          onClick={onNew}
-          className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy/90 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2"
-        >
+        <button type="button" onClick={onNew} className={primaryButtonClass}>
           New document
         </button>
       </div>
 
       {error ? (
-        <div role="alert" className="mt-6 flex items-center gap-3 rounded-lg border border-navy border-l-4 border-l-gold px-4 py-3 text-sm">
+        <Alert className="mt-6 flex items-center gap-3">
           <span>{error}</span>
           {drafts === null ? (
             <button type="button" className={buttonClass} onClick={() => setAttempt((n) => n + 1)}>
               Retry
             </button>
           ) : null}
-        </div>
+        </Alert>
       ) : null}
 
       {drafts === null ? (
@@ -99,6 +116,9 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
           {drafts.map((draft) => (
             <li
               key={draft.id}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && confirmingId === draft.id) cancelDelete();
+              }}
               className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-silver bg-white px-5 py-4 shadow-sm"
             >
               <div className="min-w-0">
@@ -106,21 +126,24 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
                 <p className="mt-0.5 truncate text-sm text-black/70">
                   {draft.parties.length > 0 ? draft.parties.join(" & ") : "Parties not filled in yet"}
                 </p>
-                <p className="mt-1 text-xs text-black/50">Updated {formatUpdated(draft.updatedAt)}</p>
+                <p className="mt-1 text-xs text-black/60">Updated {formatUpdated(draft.updatedAt)}</p>
               </div>
-              <div className="flex items-center gap-2">
+              {/* A live region, so the confirmation question is announced when it appears. */}
+              <div className="flex items-center gap-2" aria-live="polite">
                 {confirmingId === draft.id ? (
                   <>
                     <span className="text-sm text-black/70">Delete this document?</span>
                     <button
+                      ref={confirmRef}
                       type="button"
+                      aria-label={`Confirm delete ${draft.documentName}`}
                       disabled={deletingId === draft.id}
                       onClick={() => void remove(draft.id)}
-                      className="rounded-lg bg-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-navy/90 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
+                      className={`${primaryButtonClass} px-3 py-1.5`}
                     >
                       Confirm delete
                     </button>
-                    <button type="button" className={buttonClass} onClick={() => setConfirmingId(null)}>
+                    <button type="button" className={buttonClass} onClick={cancelDelete}>
                       Cancel
                     </button>
                   </>
@@ -131,8 +154,12 @@ export default function MyDocuments({ onOpen, onNew }: MyDocumentsProps) {
                     </button>
                     <button
                       type="button"
+                      ref={(node) => {
+                        if (node) deleteButtons.current.set(draft.id, node);
+                        else deleteButtons.current.delete(draft.id);
+                      }}
                       aria-label={`Delete ${draft.documentName}`}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-black/60 transition-colors hover:bg-silver/30 hover:text-black focus:outline-none focus:ring-2 focus:ring-gold"
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium text-black/70 transition-colors hover:bg-silver/30 hover:text-black ${focusRing}`}
                       onClick={() => setConfirmingId(draft.id)}
                     >
                       Delete

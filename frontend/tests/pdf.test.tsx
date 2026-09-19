@@ -2,7 +2,10 @@
 import { join } from "node:path";
 import { pdf } from "@react-pdf/renderer";
 import { describe, expect, it, vi } from "vitest";
+import { DRAFT_NOTICE, PDF_FOOTER } from "@/lib/disclaimer";
 import DocumentPdf from "@/lib/pdf/DocumentPdf";
+import type { ReactNode } from "react";
+import { isValidElement } from "react";
 import type { DocumentDefinition } from "@/types/document";
 import { sampleDefinition, sampleValues } from "./fixtures";
 
@@ -29,7 +32,31 @@ async function render(definition: DocumentDefinition): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/** Every string that appears directly in a React element tree (function components are not expanded). */
+function textsIn(node: ReactNode): string[] {
+  if (typeof node === "string") return [node];
+  if (Array.isArray(node)) return node.flatMap(textsIn);
+  if (isValidElement<{ children?: ReactNode }>(node)) return textsIn(node.props.children);
+  return [];
+}
+
 describe("DocumentPdf", () => {
+  it("carries the draft notice at the top and a legal-review footer fixed to every page", () => {
+    const tree = DocumentPdf({ definition: sampleDefinition, values: sampleValues });
+    const texts = textsIn(tree);
+    expect(texts).toContain(DRAFT_NOTICE);
+    expect(texts).toContain(PDF_FOOTER);
+    expect(texts.indexOf(DRAFT_NOTICE)).toBeLessThan(texts.indexOf("Key Terms")); // before any content
+
+    // The footer element must be marked `fixed`, which is what repeats it on every page.
+    const page = (tree.props as { children: ReactNode }).children as React.ReactElement<{ children: ReactNode[] }>;
+    const children = ([] as ReactNode[]).concat(page.props.children);
+    const footer = children.find(
+      (c) => isValidElement<{ fixed?: boolean; children?: ReactNode }>(c) && c.props.children === PDF_FOOTER,
+    ) as React.ReactElement<{ fixed?: boolean }> | undefined;
+    expect(footer?.props.fixed).toBe(true);
+  });
+
   it("generates a valid PDF for a small document", async () => {
     const bytes = await render(sampleDefinition);
     expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");

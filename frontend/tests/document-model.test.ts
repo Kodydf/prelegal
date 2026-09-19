@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildDocumentBlocks, DRAFT_NOTICE, splitBold } from "@/lib/document-model";
+import { DRAFT_NOTICE } from "@/lib/disclaimer";
+import { buildDocumentBlocks, splitBold } from "@/lib/document-model";
 import { sampleDefinition, sampleValues } from "./fixtures";
 
 describe("buildDocumentBlocks", () => {

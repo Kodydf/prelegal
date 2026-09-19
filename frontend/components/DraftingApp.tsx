@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import ChatPanel from "@/components/ChatPanel";
+import { Alert, buttonClass } from "@/components/ui";
 import DocumentPreview from "@/components/DocumentPreview";
 import DownloadButton from "@/components/DownloadButton";
-import { ApiError, GENERIC_ERROR } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { fetchDocument } from "@/lib/chat";
+import { DRAFT_REMINDER } from "@/lib/disclaimer";
 import type { DraftDetail } from "@/lib/drafts";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
@@ -37,7 +39,7 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
       })
       .catch((err) => {
         if (!cancelled) {
-          setLoadError({ id: documentId, message: err instanceof ApiError ? err.message : GENERIC_ERROR });
+          setLoadError({ id: documentId, message: errorMessage(err) });
         }
       });
     return () => {
@@ -62,6 +64,8 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
 
   // A definition left over from a previous document must not render with the new document's values.
   const ready = documentId !== null && definition?.id === documentId ? definition : null;
+  // "Continue" only describes the very first session; after Start over it is a brand-new document again.
+  const isResuming = initialDraft !== null && session === 0;
   const visibleError = loadError !== null && loadError.id === documentId ? loadError.message : null;
 
   return (
@@ -70,7 +74,7 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-navy">
-              {initialDraft ? "Continue your document" : "Draft a new document"}
+              {isResuming ? "Continue your document" : "Draft a new document"}
             </h1>
             <p className="mt-1 text-sm text-black/60">
               Chat with the assistant about the agreement you need. The document on the right fills in as you talk,
@@ -80,7 +84,7 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
           <button
             type="button"
             onClick={startOver}
-            className="shrink-0 rounded-lg border border-navy px-3 py-1 text-sm font-medium text-navy transition-colors hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
+            className={`${buttonClass} shrink-0`}
           >
             Start over
           </button>
@@ -98,9 +102,7 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
         {ready ? (
           <div className="mt-5">
             <DownloadButton definition={ready} values={values} />
-            <p className="mt-3 text-xs text-black/60">
-              This is a draft and is subject to legal review before it is signed or relied on.
-            </p>
+            <p className="mt-3 text-xs text-black/60">{DRAFT_REMINDER}</p>
           </div>
         ) : null}
       </section>
@@ -109,16 +111,12 @@ export default function DraftingApp({ initialDraft = null }: DraftingAppProps) {
         {ready ? (
           <DocumentPreview definition={ready} values={values} />
         ) : visibleError ? (
-          <div role="alert" className="rounded-xl border border-navy border-l-4 border-l-gold p-6 text-sm text-black">
+          <Alert className="p-6">
             <p>{visibleError}</p>
-            <button
-              type="button"
-              onClick={() => setLoadAttempt((n) => n + 1)}
-              className="mt-3 rounded-lg border border-navy px-3 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold"
-            >
+            <button type="button" onClick={() => setLoadAttempt((n) => n + 1)} className={`${buttonClass} mt-3`}>
               Retry
             </button>
-          </div>
+          </Alert>
         ) : documentId ? (
           <p className="p-6 text-sm italic text-black/60">Loading document…</p>
         ) : (

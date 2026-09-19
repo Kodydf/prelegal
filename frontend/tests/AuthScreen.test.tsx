@@ -18,7 +18,8 @@ describe("AuthScreen", () => {
     render(<AuthScreen onAuthenticated={() => {}} />);
     expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled(); // nothing entered yet
-    expect(screen.getByText(/subject to legal review/)).toBeInTheDocument();
+    // Shown in the brand panel on desktop and under the form on phones.
+    expect(screen.getAllByText(/subject to legal review/).length).toBeGreaterThan(0);
   });
 
   it("signs in and reports the user", async () => {
@@ -96,5 +97,20 @@ describe("AuthScreen", () => {
   it("shows a notice such as an expired session", () => {
     render(<AuthScreen onAuthenticated={() => {}} notice="Your session has ended. Please sign in again." />);
     expect(screen.getByRole("status")).toHaveTextContent("Your session has ended");
+  });
+
+  it("shows a readable message when the server rejects the email format (validation errors are a list)", async () => {
+    routeFetch({
+      "POST /api/auth/signup": () =>
+        json({ detail: [{ type: "value_error", loc: ["body", "email"], msg: "Value error, Enter a valid email address." }] }, 422),
+    });
+    render(<AuthScreen onAuthenticated={() => {}} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Create an account" }));
+    await user.type(screen.getByLabelText("Email"), "not-an-email");
+    await user.type(screen.getByLabelText(/^Password/), "correct horse");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Enter a valid email address.");
+    expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
   });
 });

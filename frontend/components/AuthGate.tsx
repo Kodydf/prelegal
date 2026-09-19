@@ -6,6 +6,8 @@ import { setUnauthorizedHandler } from "@/lib/api";
 import { fetchMe, signOut as signOutRequest, type User } from "@/lib/auth";
 
 const SESSION_ENDED = "Your session has ended. Please sign in again.";
+const SIGN_OUT_INCOMPLETE =
+  "You are signed out on this screen, but we could not reach the server to end your session. If this is a shared computer, please close the browser window.";
 
 type State = { status: "loading" } | { status: "anonymous"; notice: string | null } | { status: "signed-in"; user: User };
 
@@ -34,9 +36,11 @@ export default function AuthGate({
   }, []);
 
   const signOut = useCallback(() => {
-    // Go back to the sign-in screen straight away; ending the server session is best-effort.
-    setState({ status: "anonymous", notice: null });
-    void signOutRequest().catch(() => {});
+    // Wait for the server to end the session, so "signed out" is true; if it can't, say so.
+    signOutRequest().then(
+      () => setState({ status: "anonymous", notice: null }),
+      () => setState({ status: "anonymous", notice: SIGN_OUT_INCOMPLETE }),
+    );
   }, []);
 
   if (state.status === "loading") {

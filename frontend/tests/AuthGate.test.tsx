@@ -65,7 +65,7 @@ describe("AuthGate", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/auth/signout", { method: "POST" });
   });
 
-  it("still signs out locally if the sign-out request fails", async () => {
+  it("tells the user if the server could not end the session when signing out", async () => {
     routeFetch({
       "GET /api/auth/me": () => json({ email: "ann@example.com" }),
       "POST /api/auth/signout": () => json({ detail: "boom" }, 500),
@@ -74,6 +74,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/could not reach the server to end your session/);
   });
 
   it("returns to the sign-in screen with a notice when any API call reports an expired session", async () => {

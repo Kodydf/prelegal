@@ -1,3 +1,4 @@
+import { DRAFT_NOTICE } from "@/lib/disclaimer";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
 /**
@@ -18,9 +19,6 @@ export type DocumentBlock =
 
 const NOT_SPECIFIED = "[Not specified]";
 
-/** Shown on every generated document, on screen and in the PDF. */
-export const DRAFT_NOTICE =
-  "DRAFT: This document is a draft and is subject to legal review before it is signed or relied on.";
 
 function orPlaceholder(value: string | undefined, placeholder: string): string {
   const trimmed = (value ?? "").trim();

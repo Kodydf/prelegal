@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppHeader, { type View } from "@/components/AppHeader";
 import AuthGate from "@/components/AuthGate";
 import DraftingApp from "@/components/DraftingApp";
 import MyDocuments from "@/components/MyDocuments";
-import { ApiError, GENERIC_ERROR } from "@/lib/api";
+import { Alert } from "@/components/ui";
+import { errorMessage } from "@/lib/api";
+import { SITE_DISCLAIMER } from "@/lib/disclaimer";
 import { getDraft, type DraftDetail } from "@/lib/drafts";
 
 function Platform({ email, onSignOut }: { email: string; onSignOut: () => void }) {
@@ -14,6 +16,17 @@ function Platform({ email, onSignOut }: { email: string; onSignOut: () => void }
   const [draft, setDraft] = useState<DraftDetail | null>(null);
   const [session, setSession] = useState(0);
   const [openError, setOpenError] = useState<string | null>(null);
+
+  // After switching screens, move keyboard focus to the new content instead of leaving it on a removed button.
+  const mainRef = useRef<HTMLElement>(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    mainRef.current?.focus();
+  }, [view, session]);
 
   const startNew = () => {
     setDraft(null);
@@ -35,20 +48,18 @@ function Platform({ email, onSignOut }: { email: string; onSignOut: () => void }
       setSession((n) => n + 1);
       setView("draft");
     } catch (err) {
-      setOpenError(err instanceof ApiError ? err.message : GENERIC_ERROR);
+      setOpenError(errorMessage(err));
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <AppHeader user={{ email }} view={view} onNavigate={navigate} onSignOut={onSignOut} />
-      <main className="flex-1">
+      <main ref={mainRef} tabIndex={-1} className="flex-1 outline-none">
         {view === "documents" ? (
           <>
             {openError ? (
-              <p role="alert" className="mx-auto mt-6 max-w-4xl rounded-lg border border-navy border-l-4 border-l-gold px-4 py-3 text-sm">
-                {openError}
-              </p>
+              <Alert className="mx-auto mt-6 max-w-4xl">{openError}</Alert>
             ) : null}
             <MyDocuments onOpen={(id) => void open(id)} onNew={startNew} />
           </>
@@ -57,7 +68,7 @@ function Platform({ email, onSignOut }: { email: string; onSignOut: () => void }
         )}
       </main>
       <footer className="border-t border-silver px-4 py-4 text-center text-xs text-black/60">
-        Prelegal provides drafting assistance, not legal advice. Documents are drafts and are subject to legal review.
+        {SITE_DISCLAIMER}
       </footer>
     </div>
   );

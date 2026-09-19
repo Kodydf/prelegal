@@ -29,9 +29,9 @@ export default function DocumentPreview({
           switch (block.type) {
             case "title":
               return (
-                <h1 key={i} className="mb-1 text-center text-2xl font-bold">
+                <h2 key={i} className="mb-1 text-center text-2xl font-bold">
                   {block.text}
-                </h1>
+                </h2>
               );
             case "subtitle":
               return (
@@ -50,9 +50,9 @@ export default function DocumentPreview({
               );
             case "heading":
               return (
-                <h2 key={i} className="mb-3 mt-8 text-lg font-bold uppercase tracking-wide">
+                <h3 key={i} className="mb-3 mt-8 text-lg font-bold uppercase tracking-wide">
                   {block.text}
-                </h2>
+                </h3>
               );
             case "paragraph":
               return (
@@ -63,7 +63,7 @@ export default function DocumentPreview({
             case "field":
               return (
                 <div key={i} className="mb-4">
-                  <h3 className="text-sm font-bold">{block.label}</h3>
+                  <h4 className="text-sm font-bold">{block.label}</h4>
                   {block.hint ? <p className="text-xs italic text-black/60">{block.hint}</p> : null}
                   <p className="whitespace-pre-wrap text-sm">{block.value}</p>
                 </div>
