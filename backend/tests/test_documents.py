@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -99,3 +100,30 @@ def test_nda_defaults_come_from_definition():
     defaults = get_document("mutual-nda").defaults()
     assert defaults["purpose"].startswith("Evaluating whether")
     assert defaults["party1_company"] == ""
+
+
+# --- Template variables vs. field definitions ---------------------------------------------------
+
+_LINK = re.compile(r'<span class="(coverpage|keyterms|orderform|businessterms)_link">([^<]*)</span>')
+# Words that name the parties or the main agreement rather than a key term.
+_GENERIC = {"provider", "customer", "partner", "company", "agreement"}
+# Referenced by a template but intentionally not on the cover page.
+_NOT_ON_COVER_PAGE = {"professional-services-agreement": {"sow term"}}  # defined in each SOW
+
+
+def _norm(term: str) -> str:
+    term = term.replace("’", "'").lower().strip()
+    term = re.sub(r"'s?$", "", term)
+    return term[:-1] if term.endswith("s") else term
+
+
+@pytest.mark.parametrize("document", list(load_documents().values()), ids=lambda d: d.id)
+def test_every_variable_a_template_references_has_a_field(document):
+    spec = next(d for d in DEFINITIONS if d.id == document.id)
+    text = (content_dir() / "templates" / spec.file).read_text("utf-8")
+    referenced = {_norm(m[2]) for m in _LINK.finditer(text)} - {_norm(g) for g in _GENERIC}
+    referenced -= {_norm(t) for t in _NOT_ON_COVER_PAGE.get(document.id, set())}
+    labels = {_norm(f.label) for f in document.fields}
+    party_labels = {_norm(f.short_label) for f in document.parties[0].fields}
+    missing = {term for term in referenced if term not in labels and term not in party_labels}
+    assert not missing, f"{document.id}: template references {sorted(missing)} but no field has that label"

@@ -7,12 +7,17 @@ export interface FieldDef {
   default: string;
 }
 
+export interface PartyFieldDef extends FieldDef {
+  /** The label without the party's role, e.g. "Print Name". */
+  short_label: string;
+}
+
 export interface PartyDetail {
   key: string;
   role: string;
   hint: string;
   /** Signature-block fields; labels are "<role> <label>", e.g. "Provider Print Name". */
-  fields: FieldDef[];
+  fields: PartyFieldDef[];
 }
 
 export interface TermsBlock {

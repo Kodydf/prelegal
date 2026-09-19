@@ -10,6 +10,7 @@ const partyFields = (key: string, role: string) =>
   ].map(([suffix, label]) => ({
     key: `${key}_${suffix}`,
     label: `${role} ${label}`,
+    short_label: label,
     hint: "",
     kind: "text" as const,
     default: "",

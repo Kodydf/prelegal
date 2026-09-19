@@ -50,9 +50,8 @@ export function buildDocumentBlocks(def: DocumentDefinition, values: DocumentVal
     headers: ["", ...def.parties.map((p) => p.role.toUpperCase())],
     rows: [
       ["Signature", ...def.parties.map(() => "")],
-      ...signatureRows.map((_, i) => [
-        // "Provider Print Name" -> "Print Name"
-        def.parties[0].fields[i].label.slice(def.parties[0].role.length + 1),
+      ...signatureRows.map((field, i) => [
+        field.short_label,
         ...def.parties.map((p) => orPlaceholder(values[p.fields[i].key], "—")),
       ]),
     ],
@@ -79,10 +78,4 @@ export function splitBold(text: string): { text: string; bold: boolean }[] {
     .split("**")
     .map((part, i) => ({ text: part, bold: i % 2 === 1 }))
     .filter((part) => part.text.length > 0);
-}
-
-/** Field values to start a document with (from the definition's defaults). */
-export function defaultValues(def: DocumentDefinition): DocumentValues {
-  const all = [...def.fields, ...def.parties.flatMap((p) => p.fields)];
-  return Object.fromEntries(all.map((f) => [f.key, f.default]));
 }

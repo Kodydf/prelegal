@@ -32,11 +32,15 @@ class DocumentSummary(BaseModel):
     description: str
 
 
+class PartyFieldDef(FieldDef):
+    short_label: str  # the label without the party's role, e.g. "Print Name" (for signature-block rows)
+
+
 class PartyDetail(BaseModel):
     key: str
     role: str
     hint: str
-    fields: list[FieldDef]
+    fields: list[PartyFieldDef]
 
 
 class DocumentDetail(DocumentSummary):
@@ -61,7 +65,7 @@ def max_length(field: FieldDef) -> int:
 
 def _party_detail(party: PartyDef) -> PartyDetail:
     fields = [
-        FieldDef(key=f"{party.key}_{suffix}", label=f"{party.role} {label}", hint=hint)
+        PartyFieldDef(key=f"{party.key}_{suffix}", label=f"{party.role} {label}", short_label=label, hint=hint)
         for suffix, label, hint in PARTY_FIELDS
     ]
     return PartyDetail(key=party.key, role=party.role, hint=party.hint, fields=fields)

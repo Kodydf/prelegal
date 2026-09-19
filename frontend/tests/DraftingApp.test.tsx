@@ -9,7 +9,9 @@ vi.mock("@/components/DownloadButton", () => ({ default: () => <button>Download 
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
-function routeFetch(handlers: { chat?: () => Response; document?: () => Response }) {
+type Handler = () => Response | Promise<Response>;
+
+function routeFetch(handlers: { chat?: Handler; document?: Handler }) {
   const fetchMock = vi.fn(async (url: string) => {
     if (url.startsWith("/api/chat")) return handlers.chat!();
     if (url.startsWith("/api/documents/")) return handlers.document!();
@@ -85,5 +87,50 @@ describe("DraftingApp", () => {
     await user.click(screen.getAllByRole("button", { name: "Retry" })[0]);
     expect(await screen.findByRole("heading", { name: "Service Level Agreement" })).toBeInTheDocument();
     expect(attempts).toBe(2);
+  });
+
+  it("ignores a chat reply that arrives after Start over", async () => {
+    let finishChat!: (r: Response) => void;
+    const fetchMock = routeFetch({
+      chat: () => new Promise<Response>((resolve) => (finishChat = resolve)),
+      document: () => json(sampleDefinition),
+    });
+    render(<DraftingApp />);
+    const user = await sendMessage("SLA please");
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+
+    finishChat(chatPicksSla());
+    await new Promise((resolve) => setTimeout(resolve, 20)); // let the stale reply settle
+
+    expect(screen.getByText(/document will appear here/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Service Level Agreement" })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/api/documents/"), undefined);
+  });
+
+  it("does not show a load error from one document against the next document", async () => {
+    let finishSecondLoad!: (r: Response) => void;
+    let loads = 0;
+    let chats = 0;
+    routeFetch({
+      chat: () =>
+        chats++ === 0
+          ? json({ reply: "First.", documentId: "first-doc", values: {} })
+          : json({ reply: "Second.", documentId: sampleDefinition.id, values: sampleValues }),
+      document: () =>
+        loads++ === 0
+          ? json({ detail: "Unknown document." }, 404)
+          : new Promise<Response>((resolve) => (finishSecondLoad = resolve)),
+    });
+    render(<DraftingApp />);
+    const user = await sendMessage("one");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unknown document.");
+
+    await user.type(screen.getByLabelText("Message"), "two");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("Loading document…")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    finishSecondLoad(json(sampleDefinition));
+    expect(await screen.findByRole("heading", { name: "Service Level Agreement" })).toBeInTheDocument();
   });
 });

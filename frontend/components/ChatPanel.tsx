@@ -22,6 +22,15 @@ export default function ChatPanel({ documentId, values, onChange }: ChatPanelPro
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // "Start over" remounts this panel; a reply still in flight must not repopulate the new draft.
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -33,6 +42,7 @@ export default function ChatPanel({ documentId, values, onChange }: ChatPanelPro
     setError(null);
     try {
       const result = await sendChat(history.filter((m) => m !== GREETING), documentId, values);
+      if (!mounted.current) return;
       setMessages([...history, { role: "assistant", content: result.reply }]);
       onChange(result.documentId, result.values);
     } catch (err) {
@@ -76,7 +86,7 @@ export default function ChatPanel({ documentId, values, onChange }: ChatPanelPro
               type="button"
               onClick={() => void send(messages)}
               disabled={isSending}
-              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 disabled:opacity-50"
+              className="shrink-0 rounded-md border border-navy px-2 py-1 font-medium text-navy hover:bg-silver/30 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
             >
               Retry
             </button>

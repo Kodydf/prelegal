@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDocumentBlocks, defaultValues, splitBold } from "@/lib/document-model";
+import { buildDocumentBlocks, splitBold } from "@/lib/document-model";
 import { sampleDefinition, sampleValues } from "./fixtures";
 
 describe("buildDocumentBlocks", () => {
@@ -72,15 +72,5 @@ describe("splitBold", () => {
     ]);
     expect(splitBold("plain")).toEqual([{ text: "plain", bold: false }]);
     expect(splitBold("")).toEqual([]);
-  });
-});
-
-describe("defaultValues", () => {
-  it("collects defaults for key terms and every party field", () => {
-    const values = defaultValues(sampleDefinition);
-    expect(values.uptime_credit).toBe("5% of fees");
-    expect(values.target_uptime).toBe("");
-    expect(Object.keys(values)).toHaveLength(2 + 10);
-    expect(values.customer_date).toBe("");
   });
 });
