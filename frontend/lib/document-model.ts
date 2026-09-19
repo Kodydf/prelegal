@@ -1,3 +1,4 @@
+import { DRAFT_NOTICE } from "@/lib/disclaimer";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
 /**
@@ -8,6 +9,7 @@ import type { DocumentDefinition, DocumentValues } from "@/types/document";
 export type DocumentBlock =
   | { type: "title"; text: string }
   | { type: "subtitle"; text: string }
+  | { type: "notice"; text: string }
   | { type: "heading"; text: string }
   | { type: "paragraph"; text: string }
   | { type: "field"; label: string; hint?: string; value: string }
@@ -16,6 +18,7 @@ export type DocumentBlock =
   | { type: "footer"; text: string };
 
 const NOT_SPECIFIED = "[Not specified]";
+
 
 function orPlaceholder(value: string | undefined, placeholder: string): string {
   const trimmed = (value ?? "").trim();
@@ -26,6 +29,7 @@ export function buildDocumentBlocks(def: DocumentDefinition, values: DocumentVal
   const blocks: DocumentBlock[] = [
     { type: "title", text: def.name },
     { type: "subtitle", text: "Cover Page" },
+    { type: "notice", text: DRAFT_NOTICE },
     {
       type: "paragraph",
       text: "This Cover Page and the Standard Terms that follow together form the agreement. The key terms below apply to the Standard Terms.",

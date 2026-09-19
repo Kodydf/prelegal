@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Prelegal",
-  description: "Draft legal agreements: fill in a form, preview, and download as a PDF.",
+  description: "Draft legal agreements through a guided conversation, save them, and download them as PDFs.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

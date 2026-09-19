@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from collections.abc import Iterator
 from contextlib import closing
 from pathlib import Path
 
@@ -14,6 +15,25 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Only a hash of each session token is stored, so a leaked database can't be used to sign in.
+CREATE TABLE sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL
+);
+
+-- A saved document: which template, the field values, and the conversation that produced them.
+CREATE TABLE drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    document_id TEXT NOT NULL,
+    values_json TEXT NOT NULL,
+    messages_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX drafts_by_user ON drafts (user_id, updated_at DESC);
 """
 
 
@@ -30,3 +50,21 @@ def reset_db(path: Path | None = None) -> Path:
         conn.executescript(SCHEMA)
     return path
 
+
+def get_db() -> Iterator[sqlite3.Connection]:
+    """FastAPI dependency: one connection per request, always closed.
+
+    Writes commit explicitly inside the store functions. FastAPI runs a dependency's cleanup after the
+    response has been sent, so committing here would let a fast follow-up request miss the write.
+    """
+    # FastAPI may run a dependency and its endpoint on different worker threads.
+    conn = sqlite3.connect(get_db_path(), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        yield conn
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

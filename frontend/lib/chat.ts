@@ -1,3 +1,4 @@
+import { postJson, request } from "@/lib/api";
 import type { DocumentDefinition, DocumentValues } from "@/types/document";
 
 export interface ChatMessage {
@@ -9,37 +10,18 @@ export interface ChatResponse {
   reply: string;
   documentId: string | null;
   values: DocumentValues;
+  /** Set once a document is chosen and the conversation has been saved. */
+  draftId: number | null;
 }
 
-export const GENERIC_ERROR = "Something went wrong. Please try again.";
-
-export class ChatError extends Error {}
-
-async function request(url: string, init?: RequestInit): Promise<Response> {
-  let response: Response;
-  try {
-    response = await fetch(url, init);
-  } catch {
-    throw new ChatError("Couldn't reach the server. Check your connection and try again.");
-  }
-  if (!response.ok) {
-    const detail = await response.json().then((body) => body?.detail).catch(() => null);
-    throw new ChatError(typeof detail === "string" ? detail : GENERIC_ERROR);
-  }
-  return response;
-}
-
-/** Send the conversation and current draft; get the AI's reply and the updated draft. */
+/** Send the conversation and current draft; get the AI's reply and the updated (and saved) draft. */
 export async function sendChat(
   messages: ChatMessage[],
   documentId: string | null,
   values: DocumentValues,
+  draftId: number | null,
 ): Promise<ChatResponse> {
-  const response = await request("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, documentId, values }),
-  });
+  const response = await postJson("/api/chat", { messages, documentId, values, draftId });
   return response.json();
 }
 

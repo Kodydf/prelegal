@@ -1,29 +1,32 @@
 """Chat request/response models and the logic that applies a model turn to the draft."""
 
 import logging
+import sqlite3
 
 from pydantic import Field
 
+from app import llm, store
 from app.documents import DocumentDetail, get_document, max_length
-from app import llm
 from app.llm import ChatMessage, ChatTurn
 from app.schemas import CamelModel
 
 logger = logging.getLogger(__name__)
 
-MAX_MESSAGES = 60
+MAX_MESSAGES = 200  # what a request may carry; the model only sees the latest (llm.MODEL_HISTORY)
 
 
 class ChatRequest(CamelModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=MAX_MESSAGES)
     document_id: str | None = None
     values: dict[str, str] = {}
+    draft_id: int | None = None  # the saved draft this conversation belongs to, once it has one
 
 
 class ChatResponse(CamelModel):
     reply: str
     document_id: str | None
     values: dict[str, str]
+    draft_id: int | None  # set once a document is chosen and the conversation is saved
 
 
 def validate_draft(document_id: str | None, values: dict[str, str]) -> DocumentDetail | None:
@@ -88,3 +91,22 @@ def run_turn(request: ChatRequest, current: DocumentDetail | None) -> tuple[str,
         # Only field updates from the second pass; a further document switch is ignored.
         document, values = apply_turn(document, values, turn.model_copy(update={"document_id": None}))
     return turn.reply, document, values
+
+
+def persist_turn(
+    db: sqlite3.Connection,
+    user: store.User,
+    request: ChatRequest,
+    document: DocumentDetail | None,
+    values: dict[str, str],
+    reply: str,
+) -> int | None:
+    """Save the conversation once a document is chosen (nothing is worth saving before then).
+
+    Returns the draft id, or None if there was nothing to save. Raises store.DraftLimitReached.
+    """
+    if document is None:
+        return None
+    transcript = [m.model_dump() for m in request.messages] + [{"role": "assistant", "content": reply}]
+    saved = store.save_draft(db, user.id, request.draft_id, document.id, values, transcript)
+    return saved.id if saved else None

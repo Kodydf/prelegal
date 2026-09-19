@@ -14,6 +14,7 @@ from app.schemas import CamelModel
 MODEL = "openrouter/openai/gpt-oss-120b"
 EXTRA_BODY = {"provider": {"order": ["cerebras"]}}
 TIMEOUT_SECONDS = 30
+MODEL_HISTORY = 40  # the model sees the latest messages; the draft values carry everything settled so far
 
 
 class LLMUnavailable(Exception):
@@ -130,7 +131,7 @@ def chat_turn(
     response = completion(
         model=MODEL,
         messages=[{"role": "system", "content": system}]
-        + [{"role": m.role, "content": m.content} for m in messages],
+        + [{"role": m.role, "content": m.content} for m in messages[-MODEL_HISTORY:]],
         response_format=ChatTurn,
         reasoning_effort="low",
         timeout=TIMEOUT_SECONDS,

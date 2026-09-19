@@ -133,4 +133,46 @@ describe("DraftingApp", () => {
     finishSecondLoad(json(sampleDefinition));
     expect(await screen.findByRole("heading", { name: "Service Level Agreement" })).toBeInTheDocument();
   });
+
+  it("remembers the saved draft's id and sends it with the next message", async () => {
+    const bodies: { draftId: number | null }[] = [];
+    let chats = 0;
+    routeFetch({
+      chat: () => json({ reply: `Reply ${++chats}`, documentId: sampleDefinition.id, values: sampleValues, draftId: 9 }),
+      document: () => json(sampleDefinition),
+    });
+    const fetchMock = vi.mocked(fetch);
+    render(<DraftingApp />);
+    const user = await sendMessage("first");
+    await screen.findByText("Reply 1");
+    await user.type(screen.getByLabelText("Message"), "second");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Reply 2");
+
+    for (const [url, init] of fetchMock.mock.calls) {
+      if (String(url) === "/api/chat") bodies.push(JSON.parse(String(init?.body)));
+    }
+    expect(bodies.map((b) => b.draftId)).toEqual([null, 9]);
+  });
+
+  it("Start over forgets the draft id, so the next conversation is saved as a new document", async () => {
+    const bodies: { draftId: number | null }[] = [];
+    routeFetch({
+      chat: () => json({ reply: "ok", documentId: sampleDefinition.id, values: sampleValues, draftId: 9 }),
+      document: () => json(sampleDefinition),
+    });
+    const fetchMock = vi.mocked(fetch);
+    render(<DraftingApp />);
+    const user = await sendMessage("first");
+    await screen.findByRole("heading", { name: "Service Level Agreement" });
+    await user.click(screen.getByRole("button", { name: "Start over" }));
+    await user.type(screen.getByLabelText("Message"), "again");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("heading", { name: "Service Level Agreement" });
+
+    for (const [url, init] of fetchMock.mock.calls) {
+      if (String(url) === "/api/chat") bodies.push(JSON.parse(String(init?.body)));
+    }
+    expect(bodies.map((b) => b.draftId)).toEqual([null, null]);
+  });
 });

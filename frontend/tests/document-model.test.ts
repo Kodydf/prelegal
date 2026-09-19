@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DRAFT_NOTICE } from "@/lib/disclaimer";
 import { buildDocumentBlocks, splitBold } from "@/lib/document-model";
 import { sampleDefinition, sampleValues } from "./fixtures";
 
@@ -14,6 +15,12 @@ describe("buildDocumentBlocks", () => {
       type: "paragraph",
       text: "Designed to be used alongside a Cloud Service Agreement.",
     });
+  });
+
+  it("puts the draft / legal review notice right under the title, before anything else", () => {
+    expect(blocks[2]).toEqual({ type: "notice", text: DRAFT_NOTICE });
+    expect(DRAFT_NOTICE).toMatch(/draft/i);
+    expect(DRAFT_NOTICE).toMatch(/subject to legal review/);
   });
 
   it("lists each key term with its value, hint and a placeholder when empty", () => {
