@@ -37,8 +37,13 @@ CREATE INDEX drafts_by_user ON drafts (user_id, updated_at DESC);
 """
 
 
+# Vercel Functions can only write to /tmp. Vercel sets VERCEL=1 in its build and runtime environments.
+VERCEL_DB_PATH = Path("/tmp/prelegal.db")
+
+
 def get_db_path() -> Path:
-    return Path(os.environ.get("PRELEGAL_DB_PATH", DEFAULT_DB_PATH))
+    default = VERCEL_DB_PATH if os.environ.get("VERCEL") else DEFAULT_DB_PATH
+    return Path(os.environ.get("PRELEGAL_DB_PATH", default))
 
 
 def reset_db(path: Path | None = None) -> Path:

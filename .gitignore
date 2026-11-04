@@ -79,3 +79,7 @@ Thumbs.db
 
 # Misc logs
 *.log
+
+# Vercel: content copied into the backend service at build time (vercel.json), local CLI state
+backend/content/
+.vercel/

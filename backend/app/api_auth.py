@@ -54,7 +54,9 @@ def _start_session(db: sqlite3.Connection, response: Response, user: store.User)
         max_age=int(store.SESSION_LIFETIME.total_seconds()),
         httponly=True,
         # Set PRELEGAL_COOKIE_SECURE=1 when serving over HTTPS so the cookie is never sent over plain HTTP.
-        secure=os.environ.get("PRELEGAL_COOKIE_SECURE", "").lower() in ("1", "true", "yes"),
+        # Vercel always serves HTTPS, so it is on there by default.
+        secure=os.environ.get("PRELEGAL_COOKIE_SECURE", "1" if os.environ.get("VERCEL") else "").lower()
+        in ("1", "true", "yes"),
         samesite="lax",
         path="/",
     )

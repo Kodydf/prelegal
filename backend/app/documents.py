@@ -11,7 +11,11 @@ from app.definitions import DEFINITIONS, FieldDef, PartyDef
 from app.terms import TermsBlock, parse_terms
 
 # Repo root in development; the Docker image sets PRELEGAL_CONTENT_DIR to where it copies the content.
-DEFAULT_CONTENT_DIR = Path(__file__).resolve().parents[2]
+# On Vercel the backend service build copies the content into backend/content (see vercel.json).
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_CONTENT_DIR = (
+    _BACKEND_DIR / "content" if (_BACKEND_DIR / "content" / "catalog.json").is_file() else _BACKEND_DIR.parent
+)
 
 TEXT_MAX_LENGTH = 500
 LONG_MAX_LENGTH = 2000
